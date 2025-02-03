@@ -220,7 +220,7 @@ def depth(individuo):
     return max(max_depth(node) for node in adj_list)
 ########################################################################Francesca Stefano
 '''
-
+# Cella
 # displays forms that occur more frequently than 5
 def view_hist(module_freq, depth):
     plt.subplots(figsize=(8, 6))
