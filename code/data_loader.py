@@ -28,4 +28,4 @@ def get_dataset(file_path):
     )
     
     # training 60%, validation 20%, test 20%
-    return train_data, train_labels, test_data, test_labels, val_data, val_labels
+    return train_data, train_labels, val_data, val_labels, test_data, test_labels
