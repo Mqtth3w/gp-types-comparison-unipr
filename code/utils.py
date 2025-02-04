@@ -2,6 +2,7 @@
 import random
 import re
 from deap import tools
+from deap.algorithms import varAnd
 from matplotlib import pyplot as plt
 import numpy as np
 from sklearn.calibration import LabelEncoder
@@ -119,9 +120,8 @@ def depth(string):
 ########################################################################Arianna Cella
 
 
-'''
 ########################################################################Francesca Stefano
-def extraction(individual):
+def extraction_stef(individual):
     individual = str(individual).replace(" ", "")
     
     def parse_expression(expression):
@@ -166,12 +166,12 @@ def extraction(individual):
     
     return parse_expression(individual)
 
-def get_modules(pop):
+def get_modules_stef(pop):
     my_dict1 = {}
     my_dict2 = {}
     
     for p in pop:
-        adj_list = extraction(str(p))
+        adj_list = extraction_stef(str(p))
         
         for node in adj_list:
             children = adj_list[node]
@@ -191,8 +191,8 @@ def get_modules(pop):
 
     return my_dict1, my_dict2
 
-def get_modules_individual(individual):
-    adj_list = extraction(individual)
+def get_modules_individual_stef(individual):
+    adj_list = extraction_stef(individual)
     module_depth1 = []
     module_depth2 = []
     
@@ -205,7 +205,7 @@ def get_modules_individual(individual):
     
     return module_depth1, module_depth2
 
-def depth(individuo):
+def depth_stef(individuo):
     adj_list = extraction(individuo)
     if not adj_list:
         print("Error: adj_list is empty.")
@@ -219,7 +219,7 @@ def depth(individuo):
     
     return max(max_depth(node) for node in adj_list)
 ########################################################################Francesca Stefano
-'''
+
 # Cella
 # displays forms that occur more frequently than 5
 def view_hist(module_freq, depth):
@@ -247,7 +247,7 @@ def view_hist_fitness_freq(modules_freq_fitness):
 
     ax2.bar(keys, values_freq, color="blue", label="Frequency")
     ax1 = ax2.twinx()
-    ax1.scatter(keys, values_fitness, color="red", label="Normalized fitnesses")
+    ax1.scatter(keys, values_fitness, color="red", label="Normalized fitness")
     
     ax1.set_xlabel("Modules")
     ax1.set_ylabel("Normalized fitness values")
@@ -256,25 +256,12 @@ def view_hist_fitness_freq(modules_freq_fitness):
     
     plt.show()
 
-def varAnd(population, toolbox, cxpb, mutpb):
-    offspring = [toolbox.clone(ind) for ind in population]
-
-    for i in range(1, len(offspring), 2):
-        if random.random() < cxpb:
-            offspring[i - 1], offspring[i] = toolbox.mate(offspring[i - 1], offspring[i])
-            del offspring[i - 1].fitness.values, offspring[i].fitness.values
-
-    for i in range(len(offspring)):
-        if random.random() < mutpb:
-            offspring[i], = toolbox.mutate(offspring[i])
-            del offspring[i].fitness.values
-
-    return offspring
-
 def eaSimple_elit(population, toolbox, cxpb, mutpb, ngen, stats=None, halloffame=None, verbose=__debug__):
+    """An improved version of eaSimple with proper elitism handling"""
     logbook = tools.Logbook()
     logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
 
+    # evaluate initial population
     invalid_ind = [ind for ind in population if not ind.fitness.valid]
     fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
     for ind, fit in zip(invalid_ind, fitnesses):
@@ -288,25 +275,29 @@ def eaSimple_elit(population, toolbox, cxpb, mutpb, ngen, stats=None, halloffame
     if verbose:
         print(logbook.stream)
 
-    best_ind = None
     for gen in range(1, ngen + 1):
+        # select the next generation
         offspring = toolbox.select(population, len(population))
         offspring = varAnd(offspring, toolbox, cxpb, mutpb)
+
+        # evaluate new individuals
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
         fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
         for ind, fit in zip(invalid_ind, fitnesses):
             ind.fitness.values = fit
 
-        if best_ind is not None:
-            random_index = random.randint(0, len(population) - 1)
-            if population[random_index].fitness < best_ind.fitness:
-                population[random_index] = best_ind
-
+        # update hall of fame and keep the best individual
         if halloffame is not None:
             halloffame.update(offspring)
+            best_ind = halloffame[0]  # Best individual from HoF
 
+            # ensure the best individual is in the new generation
+            if best_ind not in offspring:
+                worst_idx = min(range(len(offspring)), key=lambda i: offspring[i].fitness.values)
+                offspring[worst_idx] = toolbox.clone(best_ind)
+
+        # replace old population with new offspring
         population[:] = offspring
-        best_ind = halloffame[0]
 
         record = stats.compile(population) if stats else {}
         logbook.record(gen=gen, nevals=len(invalid_ind), **record)
