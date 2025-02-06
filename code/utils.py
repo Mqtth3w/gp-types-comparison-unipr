@@ -1,5 +1,4 @@
-# Arianna Cella
-import random
+# initially developed by Aeranna Cella, reviewed by Francesca Stefano and afterwards by Matteo Gianvenuti
 import re
 from deap import tools
 from deap.algorithms import varAnd
@@ -119,7 +118,7 @@ def depth(string):
     return None
 ########################################################################Arianna Cella
 
-
+'''
 ########################################################################Francesca Stefano
 def extraction_stef(individual):
     individual = str(individual).replace(" ", "")
@@ -188,7 +187,6 @@ def get_modules_stef(pop):
                     my_dict2[node][0] += 1
                     my_dict2[node][1] += p.fitness.values[0]
 
-
     return my_dict1, my_dict2
 
 def get_modules_individual_stef(individual):
@@ -219,7 +217,7 @@ def depth_stef(individuo):
     
     return max(max_depth(node) for node in adj_list)
 ########################################################################Francesca Stefano
-
+'''
 # Cella
 # displays forms that occur more frequently than 5
 def view_hist(module_freq, depth):
@@ -257,7 +255,6 @@ def view_hist_fitness_freq(modules_freq_fitness):
     plt.show()
 
 def eaSimple_elit(population, toolbox, cxpb, mutpb, ngen, stats=None, halloffame=None, verbose=__debug__):
-    """An improved version of eaSimple with proper elitism handling"""
     logbook = tools.Logbook()
     logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
 
