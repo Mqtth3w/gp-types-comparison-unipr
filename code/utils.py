@@ -44,7 +44,6 @@ def training_rf(X_data, X_labels, Y_data, Y_labels):
 
     return mean_f1, Y_labels_multi, y_predictions, rf
 
-
 def extraction_tree(individual):
     individual = str(individual).replace(" ","")
 
