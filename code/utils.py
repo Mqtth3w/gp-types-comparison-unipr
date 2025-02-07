@@ -1,5 +1,6 @@
 # initially developed by Aeranna Cella, reviewed by Francesca Stefano and afterwards by Matteo Gianvenuti
 import re
+import random
 from deap import tools
 from deap.algorithms import varAnd
 from matplotlib import pyplot as plt
@@ -43,8 +44,8 @@ def training_rf(X_data, X_labels, Y_data, Y_labels):
 
     return mean_f1, Y_labels_multi, y_predictions, rf
 
-########################################################################Arianna Cella
-def extraction(individual):
+
+def extraction_tree(individual):
     individual = str(individual).replace(" ","")
 
     # regex for depth 1 submodules
@@ -69,11 +70,11 @@ def extraction(individual):
     return submodules_depth1, submodules_depth2
 
 # returns the population modules/subtrees
-def get_modules(pop):
+def get_modules_tree(pop):
     my_dict1 = {}
     my_dict2 = {}
     for individual in pop:
-        module_depth1, module_depth2 = extraction(str(individual)) 
+        module_depth1, module_depth2 = extraction_tree(str(individual)) 
 
         for m in module_depth1:
             if m not in my_dict1:
@@ -91,14 +92,14 @@ def get_modules(pop):
 
     return my_dict1, my_dict2 
 
-def get_modules_individual(individual):
+def get_modules_individual_tree(individual):
     modules = []
-    module_depth1, module_depth2 = extraction(individual)
+    module_depth1, module_depth2 = extraction_tree(individual)
     modules.extend(module_depth1)
     modules.extend(module_depth2)
     return modules
 
-def depth(string):
+def depth_tree(string):
     string = str(string).replace(" ","")
     
     # regex for depth 1 submodules
@@ -116,11 +117,8 @@ def depth(string):
         return 2
     
     return None
-########################################################################Arianna Cella
 
-'''
-########################################################################Francesca Stefano
-def extraction_stef(individual):
+def extraction_list(individual):
     individual = str(individual).replace(" ", "")
     
     def parse_expression(expression):
@@ -165,12 +163,12 @@ def extraction_stef(individual):
     
     return parse_expression(individual)
 
-def get_modules_stef(pop):
+def get_modules_list(pop):
     my_dict1 = {}
     my_dict2 = {}
     
     for p in pop:
-        adj_list = extraction_stef(str(p))
+        adj_list = extraction_list(str(p))
         
         for node in adj_list:
             children = adj_list[node]
@@ -189,8 +187,8 @@ def get_modules_stef(pop):
 
     return my_dict1, my_dict2
 
-def get_modules_individual_stef(individual):
-    adj_list = extraction_stef(individual)
+def get_modules_individual_list(individual):
+    adj_list = extraction_list(individual)
     module_depth1 = []
     module_depth2 = []
     
@@ -203,8 +201,8 @@ def get_modules_individual_stef(individual):
     
     return module_depth1, module_depth2
 
-def depth_stef(individuo):
-    adj_list = extraction(individuo)
+def depth_list(individuo):
+    adj_list = extraction_list(individuo)
     if not adj_list:
         print("Error: adj_list is empty.")
         return 0
@@ -216,9 +214,7 @@ def depth_stef(individuo):
             return 1 + max(max_depth(child) for child in adj_list[node])
     
     return max(max_depth(node) for node in adj_list)
-########################################################################Francesca Stefano
-'''
-# Cella
+
 # displays forms that occur more frequently than 5
 def view_hist(module_freq, depth):
     plt.subplots(figsize=(8, 6))
@@ -238,27 +234,25 @@ def view_hist_fitness_freq(modules_freq_fitness):
     keys = list(modules_freq_fitness.keys())
     values_freq = []
     values_fitness = []
-
     for key in keys:
         values_freq.append(modules_freq_fitness[key][0])
         values_fitness.append(modules_freq_fitness[key][1])
-
     ax2.bar(keys, values_freq, color="blue", label="Frequency")
     ax1 = ax2.twinx()
     ax1.scatter(keys, values_fitness, color="red", label="Normalized fitness")
-    
     ax1.set_xlabel("Modules")
     ax1.set_ylabel("Normalized fitness values")
     ax2.set_ylabel("Frequency values")
     fig.legend()
-    
     plt.show()
 
-def eaSimple_elit(population, toolbox, cxpb, mutpb, ngen, stats=None, halloffame=None, verbose=__debug__):
+def eaSimple_elit(population, toolbox, cxpb, mutpb, ngen, stats=None,
+             halloffame=None, verbose=__debug__):
+    
     logbook = tools.Logbook()
     logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
 
-    # evaluate initial population
+    # Evaluate the individuals with an invalid fitness
     invalid_ind = [ind for ind in population if not ind.fitness.valid]
     fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
     for ind, fit in zip(invalid_ind, fitnesses):
@@ -272,30 +266,39 @@ def eaSimple_elit(population, toolbox, cxpb, mutpb, ngen, stats=None, halloffame
     if verbose:
         print(logbook.stream)
 
+    best_ind = None
+    # Begin the generational process
     for gen in range(1, ngen + 1):
-        # select the next generation
+        # Select the next generation individuals
         offspring = toolbox.select(population, len(population))
+
+        # Vary the pool of individuals
         offspring = varAnd(offspring, toolbox, cxpb, mutpb)
 
-        # evaluate new individuals
+        # Evaluate the individuals with an invalid fitness
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
         fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
         for ind, fit in zip(invalid_ind, fitnesses):
             ind.fitness.values = fit
 
-        # update hall of fame and keep the best individual
+        # Elitism
+        if best_ind is not None:
+            random_index = random.randint(0, len(population) - 1)
+            if population[random_index].fitness < best_ind.fitness:
+                population[random_index] = best_ind
+
+        # Update the hall of fame with the generated individuals
         if halloffame is not None:
             halloffame.update(offspring)
-            best_ind = halloffame[0]  # Best individual from HoF
 
-            # ensure the best individual is in the new generation
-            if best_ind not in offspring:
-                worst_idx = min(range(len(offspring)), key=lambda i: offspring[i].fitness.values)
-                offspring[worst_idx] = toolbox.clone(best_ind)
-
-        # replace old population with new offspring
+        # Replace the current population by the offspring
         population[:] = offspring
 
+        # Elitism
+        if halloffame is not None:
+            best_ind = halloffame[0]
+        
+        # Append the current generation statistics to the logbook
         record = stats.compile(population) if stats else {}
         logbook.record(gen=gen, nevals=len(invalid_ind), **record)
         if verbose:
