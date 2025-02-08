@@ -1,16 +1,16 @@
 # initially developed by Aeranna Cella, reviewed by Matteo Gianvenuti
 import datetime
-import tkinter as tk
 from tkinter import ttk, scrolledtext, filedialog, messagebox
 import os
 import threading
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from genetic_programming import *
 
-def threaded_task(task_func, root, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def threaded_task(task_func, event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     thread = threading.Thread(
         target=task_func,
-        args=(root, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size),
+        args=(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size),
         daemon=True
     )
     thread.start()
@@ -24,125 +24,132 @@ def upload_csv():
     if not os.path.isfile(file_path): # should never happen
         messagebox.showerror("Error", "Select only a csv file.")
     
-def start_tasks(root, msginfo, out1, out2, out3, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def start_tasks(_, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     # run in // the three types of GP
+    global running
+    if running:
+        messagebox.showerror("Error", "The previous run must complete before another can be run.")
+        return
+    
     # params check
     if not(file_path and os.path.isfile(file_path)):
         messagebox.showerror("Error", "Select a csv dataset file.")
         return
+    
+    running = True
+    msginfo = outbox[0]
+    # to sync
+    event1 = threading.Event()
+    event2 = threading.Event()
+    event3 = threading.Event()
+
     # CellaMethod tree
-    threaded_task(modularGP_CellaMethod, root, out1, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
+    threaded_task(modularGP_CellaMethod, event1, outbox[1], n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
     # StefanoMethod list
-    threaded_task(modularGP_StefanoMethod, root, out2, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
+    threaded_task(modularGP_StefanoMethod, event2, outbox[2], n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
     # classical GP
-    threaded_task(classicalGP, root, out3, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
+    threaded_task(classicalGP, event3, outbox[3], n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
+
     msginfo.config(text="Running...")
-    root.update()
+    # sync
+    event1.wait()
+    event2.wait()
+    event3.wait()
 
-def modularGP_CellaMethod(root, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+    msginfo.config(text="Tasks completed")
+    running = False
+    
+def modularGP_CellaMethod(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+    outbox.delete(1.0, tk.END)
+    event.set()
     pass
 
-def modularGP_StefanoMethod(root, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def modularGP_StefanoMethod(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+    outbox.delete(1.0, tk.END)
+    event.set()
     pass
 
-def classicalGP(root, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def classicalGP(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+    outbox.delete(1.0, tk.END)
+    event.set()
     pass
 
 '''
-def run_script():
-    if(len(n_run_entry.get())>0 and len(kernel_entry.get())>0):# and len(target_entry.get())>0):
-        # Recupero dei valori inseriti dall'utente
-        run=int(n_run_entry.get())
-        max_depth=max_depth_spinbox.get()
-        generations=selected_option_generation.get()
-        pop_size=selected_option_popolation.get()
-        iterations=selected_option_iteration.get()
-        individual_to_keep=ind_to_keep_spinbox.get()
-        kernel_size=kernel_entry.get()
-        global file_path
+def run_script(outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
 
-        if(len(file_path)>0):
-            message_label.config(text="Algoritmo in esecuzione...")
-            root.update()
+    list_f1_tot=[]
+    # Ottenere l'ora attuale come oggetto datetime
+    now = datetime.datetime.now()
+    current_time = now.strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"results_{current_time}.txt"
+    
+    # Esecuzione dello script n volte e salvataggio dei risultati in un file
+    with open(filename, "a") as results_file:
+    
+        results_file.write("PARAMETRI IMPOSTATI: \nNumero di generazioni: "+ str(generations)+ "\nNumero di iterazione: "+ str(iterations)+ "\nProfondita' massima dell'albero: "+ str(max_depth)+ "\nIndividui da mantenere: "+ str(individual_to_keep)+ "\nNumero di run da eseguire: "+ str(run)+ "\nKernel size: "+ str(kernel_size)+ "\nPopulation size: "+ str(pop_size)+ "\nDataset: "+ str(file_path)+ "\n\n")
+        results_file.close() #chiudo perchè potrebbe non visualizzarsi il grafico
 
-            list_f1_tot=[]
-            # Ottenere l'ora attuale come oggetto datetime
-            now = datetime.datetime.now()
-            current_time = now.strftime("%Y-%m-%d_%H-%M-%S")
-            filename = f"results_{current_time}.txt"
-           
-            # Esecuzione dello script n volte e salvataggio dei risultati in un file
-            with open(filename, "a") as results_file:
-            
-                results_file.write("PARAMETRI IMPOSTATI: \nNumero di generazioni: "+ str(generations)+ "\nNumero di iterazione: "+ str(iterations)+ "\nProfondita' massima dell'albero: "+ str(max_depth)+ "\nIndividui da mantenere: "+ str(individual_to_keep)+ "\nNumero di run da eseguire: "+ str(run)+ "\nKernel size: "+ str(kernel_size)+ "\nPopulation size: "+ str(pop_size)+ "\nDataset: "+ str(file_path)+ "\n\n")
-                results_file.close() #chiudo perchè potrebbe non visualizzarsi il grafico
-
-            for i in range(run):
-                #chiamo il mio codice di programmazione genetica che effettua classificazione binaria passando i parametri settati dall'utente
-                f1_validation, f1_test, statistic= modularGP(run,max_depth,generations,iterations,individual_to_keep,file_path, kernel_size, pop_size, i)
-                if(i==run-1):
-                    message_label.config(text="Algoritmo terminato, visualizzazione grafico:")
-                else:
-                    message_label.config(text=f"La run {i} è stata completata. In esecuzione run {i+1} e visualizzazione grafico run {i}:")
-                root.update()
-                #al termine della run del programma visualizzo il grafico dei risultati su validation e training set
-                graph(f1_test, f1_validation, i)
-                #scrivo i risultati su file
-                with open(filename, "a") as results_file:
-                    results_file.write("\n------------------------------------------------------------------------------")
-                    results_file.write(f"\nESECUZIONE RUN {i}\n\n") 
-
-                    for iter in range(int(iterations)):
-                        #stampo statistiche
-                        results_file.write(f"\nStatistiche iterazione {iter}:\n ")
-                        results_file.write(str(statistic[iter]))
-                        results_file.write("\n")
-
-                        #stampo risultati F1 su test set
-                        results_file.write(f"\n\nF1 on test set dell'iterazione {iter}: ")
-                        list_f1_tot.append(f1_test[iter])
-                        results_file.write(str(f1_test[iter]))
-                        results_file.write("\n")
-                    
-                
-                    #riassunto dei risultati 
-                    results_file.write(f"\nRICAPITOLANDO\nF1 on test set della run {i}:\n")
-                    avg=float(0)
-                    for f in f1_test:
-                        avg+=float(f)
-                        results_file.write(str(f))
-                        results_file.write("\n")
-                    
-
-                    results_file.write(f"\n\nF1 on validation set della run {i}: \n")
-                    for f in f1_validation:
-                        results_file.write(str(f))
-                        results_file.write("\n")
-
-                    avg=avg/float(iterations)    
-                    results_file.write(f"\nF1 MEDIA DELL'ESECUZIONE DELLA RUN {i}: ")
-                    results_file.write(str(avg)+"\n\n")
-                    results_file.close()
-                    
-            #risultato finale dato come media di tutte f1 delle varie run effettuate
-            with open(filename, "a") as results_file:
-                results_file.write("\n\n------------------------------------------------------------------------------")
-                results_file.write(f"\nF1 MEDIA COMPLESSIVA DI TUTTE LE RUN:")
-                avg=float(0)
-                for f in list_f1_tot:
-                    avg+=float(f)
-                avg=avg/(float(iterations)*float(run))
-                results_file.write(str(avg)+'\n')
-                results_file.close()
+    for i in range(run):
+        #chiamo il mio codice di programmazione genetica che effettua classificazione binaria passando i parametri settati dall'utente
+        f1_validation, f1_test, statistic= modularGP(run,max_depth,generations,iterations,individual_to_keep,file_path, kernel_size, pop_size, i)
+        if(i==run-1):
+            message_label.config(text="Algoritmo terminato, visualizzazione grafico:")
         else:
-           messagebox.showwarning("Error", "Inserisci file csv")
- 
-    else:
-        messagebox.showwarning("Error", "Inserisci tutti i parametri")
+            message_label.config(text=f"La run {i} è stata completata. In esecuzione run {i+1} e visualizzazione grafico run {i}:")
+        root.update()
+        #al termine della run del programma visualizzo il grafico dei risultati su validation e training set
+        graph(f1_test, f1_validation, i)
+        #scrivo i risultati su file
+        with open(filename, "a") as results_file:
+            results_file.write("\n------------------------------------------------------------------------------")
+            results_file.write(f"\nESECUZIONE RUN {i}\n\n") 
+
+            for iter in range(int(iterations)):
+                #stampo statistiche
+                results_file.write(f"\nStatistiche iterazione {iter}:\n ")
+                results_file.write(str(statistic[iter]))
+                results_file.write("\n")
+
+                #stampo risultati F1 su test set
+                results_file.write(f"\n\nF1 on test set dell'iterazione {iter}: ")
+                list_f1_tot.append(f1_test[iter])
+                results_file.write(str(f1_test[iter]))
+                results_file.write("\n")
+            
+        
+            #riassunto dei risultati 
+            results_file.write(f"\nRICAPITOLANDO\nF1 on test set della run {i}:\n")
+            avg=float(0)
+            for f in f1_test:
+                avg+=float(f)
+                results_file.write(str(f))
+                results_file.write("\n")
+            
+
+            results_file.write(f"\n\nF1 on validation set della run {i}: \n")
+            for f in f1_validation:
+                results_file.write(str(f))
+                results_file.write("\n")
+
+            avg=avg/float(iterations)    
+            results_file.write(f"\nF1 MEDIA DELL'ESECUZIONE DELLA RUN {i}: ")
+            results_file.write(str(avg)+"\n\n")
+            results_file.close()
+            
+    #risultato finale dato come media di tutte f1 delle varie run effettuate
+    with open(filename, "a") as results_file:
+        results_file.write("\n\n------------------------------------------------------------------------------")
+        results_file.write(f"\nF1 MEDIA COMPLESSIVA DI TUTTE LE RUN:")
+        avg=float(0)
+        for f in list_f1_tot:
+            avg+=float(f)
+        avg=avg/(float(iterations)*float(run))
+        results_file.write(str(avg)+'\n')
+        results_file.close()
 '''   
 
 #per visualizzare il grafico ad ogni fine run
-def graph(root, frame, f1_training, f1_validation, cnt):
+def graph(frame, f1_training, f1_validation, cnt):
     #elimino il grafico precendente
     for widget in frame.grid_slaves():
         if int(widget.grid_info()["row"]) == 5 and int(widget.grid_info()["column"]) == 0:
@@ -168,9 +175,8 @@ def graph(root, frame, f1_training, f1_validation, cnt):
     canvas = FigureCanvasTkAgg(fig, master=frame)
     canvas.draw()
     canvas.get_tk_widget().grid(row=5, column=0, padx=20, pady=10)
-    #aggiorno grafica
-    root.update()
 
+running = False
 def ui():
     root = tk.Tk()
     root.title("GP types comparsion")
@@ -243,7 +249,7 @@ def ui():
     target_entry.grid(row=0, column=2, pady=20)
     '''
     # run button 
-    button = tk.Button(frame, text="Run", command=lambda: start_tasks(root, message_label, outbox1, outbox2, outbox3,
+    button = tk.Button(frame, text="Run", command=lambda: threaded_task(start_tasks, None, [message_label, outbox1, outbox2, outbox3],
                                                                       int(n_run_spinbox.get()), int(max_depth_spinbox.get()), 
                                                                       int(selected_option_generation.get()), int(selected_option_popolation.get()), 
                                                                       int(selected_option_iteration.get()), int(ind_to_keep_spinbox.get()),
