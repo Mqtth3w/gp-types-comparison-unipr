@@ -36,7 +36,7 @@ def start_tasks(_, outbox, n_run, max_depth, generations, pop_size, iterations, 
         messagebox.showerror("Error", "Select a csv dataset file.")
         return
     
-    running = True
+    running = True # monitor
     msginfo = outbox[0]
     # to sync
     event1 = threading.Event()
@@ -59,119 +59,94 @@ def start_tasks(_, outbox, n_run, max_depth, generations, pop_size, iterations, 
     msginfo.config(text="Tasks completed")
     running = False
     
-def modularGP_CellaMethod(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def start_modularGP_CellaMethod(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     outbox.delete(1.0, tk.END)
+    run_script(modularGP_CellaMethod, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
     event.set()
     pass
 
-def modularGP_StefanoMethod(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def strat_modularGP_StefanoMethod(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     outbox.delete(1.0, tk.END)
+    run_script(modularGP_StefanoMethod, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
     event.set()
     pass
 
-def classicalGP(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def start_classicalGP(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     outbox.delete(1.0, tk.END)
+    run_script(classicalGP, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
     event.set()
     pass
 
-'''
-def run_script(outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
 
-    list_f1_tot=[]
-    # Ottenere l'ora attuale come oggetto datetime
-    now = datetime.datetime.now()
-    current_time = now.strftime("%Y-%m-%d_%H-%M-%S")
+def run_script(method_func, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+
+    avg_f1 = []
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"results_{current_time}.txt"
     
-    # Esecuzione dello script n volte e salvataggio dei risultati in un file
-    with open(filename, "a") as results_file:
-    
-        results_file.write("PARAMETRI IMPOSTATI: \nNumero di generazioni: "+ str(generations)+ "\nNumero di iterazione: "+ str(iterations)+ "\nProfondita' massima dell'albero: "+ str(max_depth)+ "\nIndividui da mantenere: "+ str(individual_to_keep)+ "\nNumero di run da eseguire: "+ str(run)+ "\nKernel size: "+ str(kernel_size)+ "\nPopulation size: "+ str(pop_size)+ "\nDataset: "+ str(file_path)+ "\n\n")
-        results_file.close() #chiudo perchè potrebbe non visualizzarsi il grafico
+    # run the script n times and save the results to a file
+    with open(filename, "w") as results_file:
+        results_file.write(f"Parameters set:\ngenerations: {generations}\niterations: {iterations}\nmax depth: {max_depth}\nindividuals to keep: {inds_to_keep}\nnumber of runs: {n_run}\nkernel size: {kernel_size}\npopulation size: {pop_size}\ndataset: {file_path}\n\n")
 
-    for i in range(run):
-        #chiamo il mio codice di programmazione genetica che effettua classificazione binaria passando i parametri settati dall'utente
-        f1_validation, f1_test, statistic= modularGP(run,max_depth,generations,iterations,individual_to_keep,file_path, kernel_size, pop_size, i)
-        if(i==run-1):
-            message_label.config(text="Algoritmo terminato, visualizzazione grafico:")
+    for i in range(n_run):
+        f1_validation, f1_test, statistic = method_func(file_path, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size, i)
+        if i == n_run-1:
+            outbox.insert(tk.END, "Algorithm finished, charts view:")
         else:
-            message_label.config(text=f"La run {i} è stata completata. In esecuzione run {i+1} e visualizzazione grafico run {i}:")
-        root.update()
-        #al termine della run del programma visualizzo il grafico dei risultati su validation e training set
+            outbox.insert(tk.END, f"Run {i} completed. Running {i+1} started. Charts view of run {i}:")
+        
+        # at the end of the program run display the charts of the results on validation and training set
         graph(f1_test, f1_validation, i)
-        #scrivo i risultati su file
+        # save results
         with open(filename, "a") as results_file:
             results_file.write("\n------------------------------------------------------------------------------")
-            results_file.write(f"\nESECUZIONE RUN {i}\n\n") 
+            results_file.write(f"\nRUN {i}\n") 
 
             for iter in range(int(iterations)):
-                #stampo statistiche
-                results_file.write(f"\nStatistiche iterazione {iter}:\n ")
-                results_file.write(str(statistic[iter]))
-                results_file.write("\n")
+                results_file.write(f"\Iteration {iter} Statistics: {statistic[iter]}\n")
+                results_file.write(f"F1 on test set of iter {iter}: {f1_test[iter]}\n")
+                
+            # recap 
+            results_file.write(f"\nRECAP\nF1 on test set of run {i}:\n")
+            avg = sum(map(float, f1_test)) / iterations #len(f1_test)
+            avg_f1.append(avg)
+            results_file.writelines(f"{f}\n" for f in f1_test)            
 
-                #stampo risultati F1 su test set
-                results_file.write(f"\n\nF1 on test set dell'iterazione {iter}: ")
-                list_f1_tot.append(f1_test[iter])
-                results_file.write(str(f1_test[iter]))
-                results_file.write("\n")
-            
-        
-            #riassunto dei risultati 
-            results_file.write(f"\nRICAPITOLANDO\nF1 on test set della run {i}:\n")
-            avg=float(0)
-            for f in f1_test:
-                avg+=float(f)
-                results_file.write(str(f))
-                results_file.write("\n")
-            
+            results_file.write(f"\n\nF1 on validation set of run {i}:\n")
+            results_file.writelines(f"{f}\n" for f in f1_validation)
 
-            results_file.write(f"\n\nF1 on validation set della run {i}: \n")
-            for f in f1_validation:
-                results_file.write(str(f))
-                results_file.write("\n")
-
-            avg=avg/float(iterations)    
-            results_file.write(f"\nF1 MEDIA DELL'ESECUZIONE DELLA RUN {i}: ")
-            results_file.write(str(avg)+"\n\n")
-            results_file.close()
+            results_file.write(f"\nMEAN F1 OF RUN {i}: {avg}\n\n")
             
-    #risultato finale dato come media di tutte f1 delle varie run effettuate
+    # final result given as the average of all f1s of the various runs carried out
+    avg = sum(map(float, avg_f1)) / n_run #len(avg_f1)
     with open(filename, "a") as results_file:
         results_file.write("\n\n------------------------------------------------------------------------------")
-        results_file.write(f"\nF1 MEDIA COMPLESSIVA DI TUTTE LE RUN:")
-        avg=float(0)
-        for f in list_f1_tot:
-            avg+=float(f)
-        avg=avg/(float(iterations)*float(run))
-        results_file.write(str(avg)+'\n')
-        results_file.close()
-'''   
+        results_file.write(f"\nF1 OVERALL AVERAGE OF ALL RUNS: {avg}")
 
-#per visualizzare il grafico ad ogni fine run
-def graph(frame, f1_training, f1_validation, cnt):
-    #elimino il grafico precendente
+# to display the chart at the end of each run
+def graph(frame, f1_training, f1_validation, n_run):
+    # delete the previous chart
     for widget in frame.grid_slaves():
         if int(widget.grid_info()["row"]) == 5 and int(widget.grid_info()["column"]) == 0:
             widget.grid_forget()
-    x1=[]
-    x2=[]
+    x1 = []
+    x2 = []
     for i in range(len(f1_training)):
         x1.append(i+1)
     for i in range(len(f1_validation)):
         x2.append(i+1)
-    #creo il grafico a dispersione, uso anche plot per avere linea che congiunge
+    # create scatter plot, also use plot to have line joining
     fig = Figure(figsize=(7, 3), dpi=100)
     ax = fig.add_subplot(111)
     ax.scatter(x1, f1_training, color='blue', label='TEST SET')
     ax.scatter(x2, f1_validation, color='red', label='VALIDATION SET')
     ax.plot(x1, f1_training, color='blue')
     ax.plot(x2, f1_validation, color='red')
-    ax.set_xlabel('ITERAZIONI')
+    ax.set_xlabel('ITERATIONS')
     ax.set_ylabel('F1')
-    ax.set_title(f'Validation and test set F1, run numero {cnt}')
+    ax.set_title(f'Validation and test set F1, run number: {n_run}')
     ax.legend()
-    #creo un oggetto FigureCanvasTkAgg che contiene il grafico
+    # creates a FigureCanvasTkAgg object that contains the chart
     canvas = FigureCanvasTkAgg(fig, master=frame)
     canvas.draw()
     canvas.get_tk_widget().grid(row=5, column=0, padx=20, pady=10)
@@ -260,7 +235,7 @@ def ui():
     message_label = tk.Label(frame, text="General output info here")
     message_label.grid(row=4, column=0, sticky="news", padx=20, pady=10)
 
-    # show three output box in //
+    # show three output boxes in //
     output_frame = tk.Frame(frame)
     output_frame.grid(row=5, column=0, padx=20, pady=10, sticky="news")
     output_frame.columnconfigure(0, weight=2)

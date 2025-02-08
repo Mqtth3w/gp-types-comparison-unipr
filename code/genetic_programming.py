@@ -13,6 +13,8 @@ import tkinter as tk
 import pathos.multiprocessing as multiprocessing
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
+def classicalGP(file_path, outbox, n_run, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
+    pass
 
 def modularGP_StefanoMethod(file_path, outbox, n_run, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     MIN_DEPTH = 4
@@ -204,36 +206,39 @@ def modularGP_StefanoMethod(file_path, outbox, n_run, MAX_DEPTH, N_GENERATIONS, 
         diversity = len(set(fitness_values)) / len(fitness_values)
         
         if diversity < diversity_threshold or fitness_improvement < fitness_improvement_threshold:
-            toolbox.mate = toolbox.mate_subtree
-            toolbox.mutate = toolbox.mutate_subtree
+            cxpb = 0.3 # lower crossover rate
+            mutpb = 0.3 # higher mutation rate
         else:
-            toolbox.mate = toolbox.mate #?!
-            toolbox.mutate = toolbox.mutate_point
+            cxpb = 0.6 # higher crossover rate
+            mutpb = 0.1 # lower mutation rate
         
         prev_population[:] = population
-
+        return cxpb, mutpb
+        
     prev_population = []
 
+    cxpb, mutpb = 0.5, 0.1
     for cnt in range(N_ITERATIONS):
         pop = toolbox.population(n=N_POPULATION)
 
+        if cnt == 0:
+            identity = gp.PrimitiveTree.from_string("ARG" + str(KERNEL_SIZE // 2), pset)
+            identity = creator.Individual(identity)
+            pop[random.randrange(N_POPULATION // 2)] = identity
+        
         if ind_best is not None:
             pop[random.randrange(N_POPULATION // 2, N_POPULATION)] = ind_best
-
-        identity = gp.PrimitiveTree.from_string("ARG" + str(KERNEL_SIZE // 2), pset)
-        identity = creator.Individual(identity)
-        pop[random.randrange(N_POPULATION // 2)] = identity
 
         hof[cnt] = tools.HallOfFame(3)
         
         for gen in range(N_GENERATIONS):
-            pop = varAnd(pop, toolbox, cxpb=0.5, mutpb=0.1)
+            pop = varAnd(pop, toolbox, cxpb=cxpb, mutpb=mutpb)
             invalid_ind = [ind for ind in pop if not ind.fitness.valid]
             fitnesses = map(toolbox.evaluate, invalid_ind)
             for ind, fit in zip(invalid_ind, fitnesses):
                 ind.fitness.values = fit
             hof[cnt].update(pop)
-            adjust_probabilities(pop, gen)
+            cxpb, mutpb = adjust_probabilities(pop, gen)
             pop = toolbox.select(pop, len(pop))
             log = mstats.compile(pop)
             statistic.append(log)
@@ -246,10 +251,10 @@ def modularGP_StefanoMethod(file_path, outbox, n_run, MAX_DEPTH, N_GENERATIONS, 
         f1_score.append(f1_testSet)
         
         modules_depth1, modules_depth2 = get_modules_list(pop)
-        view_hist(modules_depth1, 1)
-        view_hist(modules_depth2, 2)
-        view_hist_fitness_freq(modules_depth1)
-        view_hist_fitness_freq(modules_depth2)
+        #view_hist(modules_depth1, 1)
+        #view_hist(modules_depth2, 2)
+        #view_hist_fitness_freq(modules_depth1)
+        #view_hist_fitness_freq(modules_depth2)
         
         individuals_to_keep[cnt] = get_individuals_to_keep(N_IND_TO_KEEP, modules_depth1, modules_depth2)
     
@@ -393,7 +398,7 @@ def modularGP_CellaMethod(file_path, outbox, n_run, MAX_DEPTH, N_GENERATIONS, N_
         except Exception as e:
             print(f"Error in protectedDiv({x}, {y}): {e}")
             return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
-   
+    
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
     pset.addPrimitive(operator.add, 2)
     pset.addPrimitive(operator.sub, 2)
@@ -449,6 +454,7 @@ def modularGP_CellaMethod(file_path, outbox, n_run, MAX_DEPTH, N_GENERATIONS, N_
         nonlocal cnt_arg
         output = f"ARG{cnt_arg}"
         cnt_arg = (cnt_arg + 1) % 3
+        print(outbox)
         return output
     
     hof = [None] * N_ITERATIONS
