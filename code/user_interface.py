@@ -1,12 +1,11 @@
 # initially developed by Aeranna Cella, reviewed by Matteo Gianvenuti
 from datetime import datetime
-import time
 from tkinter import ttk, scrolledtext, filedialog, messagebox
 import os
 import threading
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from genetic_programming import *
+from gp_types import *
 
 def threaded_task(task_func, event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     thread = threading.Thread(
@@ -212,12 +211,7 @@ def ui():
     # upload csv file (dataset)
     button = tk.Button(dataset_into_frame, text="Upload csv dataset", command=upload_csv)
     button.grid(row=0, column=0, padx=50, pady=20)
-    '''
-    target = tk.Label(dataset_into_frame, text="Label target:")
-    target.grid(row=0,column=1, pady=20)
-    target_entry = tk.Entry(dataset_into_frame)
-    target_entry.grid(row=0, column=2, pady=20)
-    '''
+    
     # run button 
     button = tk.Button(frame, text="Run", command=lambda: threaded_task(start_tasks, None, [message_label, outbox1, outbox2, outbox3],
                                                                       int(n_run_spinbox.get()), int(max_depth_spinbox.get()), 
@@ -248,10 +242,10 @@ def ui():
     # classicalGP
     outbox3 = scrolledtext.ScrolledText(output_frame, wrap=tk.WORD, width=55, height=20)
     outbox3.grid(row=1, column=2, padx=5, pady=5, sticky="news")
-
+    
     root.mainloop()
-
+    
 
 
 if __name__ == '__main__':
-    ui()
+    ui() #graph(frame, list(range(1, 11)), list(range(1, 11)), 1)

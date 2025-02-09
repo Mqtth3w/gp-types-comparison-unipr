@@ -218,7 +218,6 @@ def modularGP_CellaMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULAT
         
         cnt_arg = 0
         for i in range(len(individuals_to_keep[cnt])):
-            #cnt_arg = 0 # nosense it will be always 0
             individuals_to_keep[cnt][i] = re.sub(r'ARG\d+', replace, individuals_to_keep[cnt][i])
 
         individuals_to_keep[cnt] = list(set(individuals_to_keep[cnt]))
@@ -233,7 +232,7 @@ def modularGP_CellaMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULAT
         
         cnt1 = cntTree
         
-        # adds to the primitives the modules to be maintained in the next interaction
+        # adds to the primitives the modules to be maintained in the next interation
         for ind in individuals_to_keep[cnt]:
             depth_level = depth_tree(str(ind))
             if depth_level == 2:
@@ -270,20 +269,14 @@ def modularGP_StefanoMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPUL
     validation_f1, f1_score, statistic  = [], [], []
 
     def evalTrainingSet(individual):
-        # compilation of the individual
         clf = gp.PrimitiveTree(individual)
         func = gp.compile(clf, pset)
         new_train_set = convolution(func, train_data, KERNEL_SIZE)
         new_val_set = convolution(func, val_data, KERNEL_SIZE)
-
-        # model training and evaluation
         f1_validation, _, _, _ = training_rf(new_train_set, train_labels, new_val_set, val_labels)
-
-        # fitness calculation with penalty proportional to the number of nodes in the tree
         num_nodes = individual.height
         K = 0.01
         fitness = f1_validation / (1 + K * num_nodes)
-        
         return (fitness,)
     
     def evalSet(individual, data, labels, type): # test/validation
@@ -291,16 +284,9 @@ def modularGP_StefanoMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPUL
         func = gp.compile(clf, pset)
         new_train_set = convolution(func, train_data, KERNEL_SIZE)
         new_data = convolution(func, data, KERNEL_SIZE)
-        mean_f1, Y_labels_multi, y_predictions, rf = training_rf(new_train_set, train_labels, new_data, labels)
+        mean_f1, _, _, _ = training_rf(new_train_set, train_labels, new_data, labels)
         outbox.insert(tk.END, f"Reached {mean_f1} F1 on {type} set\n")
         #print(f"Reached {mean_f1} F1 on {type} set") 
-        '''
-        # confusion matrix
-        conf_matrix = confusion_matrix(Y_labels_multi, y_predictions, labels=rf.classes_)
-        disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=rf.classes_)
-        disp.plot()
-        plt.show()
-        '''
         return mean_f1
 
     def get_individuals_to_keep(n, modules_depth1, modules_depth2):
