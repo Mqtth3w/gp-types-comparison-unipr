@@ -1,5 +1,6 @@
 # initially developed by Aeranna Cella, reviewed by Matteo Gianvenuti
-import datetime
+from datetime import datetime
+import time
 from tkinter import ttk, scrolledtext, filedialog, messagebox
 import os
 import threading
@@ -63,26 +64,23 @@ def start_modularGP_CellaMethod(event, outbox, n_run, max_depth, generations, po
     outbox.delete(1.0, tk.END)
     run_script(modularGP_CellaMethod, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
     event.set()
-    pass
 
 def strat_modularGP_StefanoMethod(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     outbox.delete(1.0, tk.END)
     run_script(modularGP_StefanoMethod, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
     event.set()
-    pass
 
 def start_classicalGP(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     outbox.delete(1.0, tk.END)
     run_script(classicalGP, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
     event.set()
-    pass
-
 
 def run_script(method_func, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
-
     avg_f1 = []
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"results_{current_time}.txt"
+    current_time = datetime.datetime.now()
+    start = current_time.timestamp()
+    current_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"{method_func.__name__}_results_{current_time}.txt"
     
     # run the script n times and save the results to a file
     with open(filename, "w") as results_file:
@@ -93,7 +91,7 @@ def run_script(method_func, outbox, n_run, max_depth, generations, pop_size, ite
         if i == n_run-1:
             outbox.insert(tk.END, "Algorithm finished, charts view:")
         else:
-            outbox.insert(tk.END, f"Run {i} completed. Running {i+1} started. Charts view of run {i}:")
+            outbox.insert(tk.END, f"Run {i} completed. Run {i+1} started. Charts view of run {i}:")
         
         # at the end of the program run display the charts of the results on validation and training set
         graph(f1_test, f1_validation, i)
@@ -103,7 +101,7 @@ def run_script(method_func, outbox, n_run, max_depth, generations, pop_size, ite
             results_file.write(f"\nRUN {i}\n") 
 
             for iter in range(int(iterations)):
-                results_file.write(f"\Iteration {iter} Statistics: {statistic[iter]}\n")
+                results_file.write(f"Iteration {iter} Statistics: {statistic[iter]}\n")
                 results_file.write(f"F1 on test set of iter {iter}: {f1_test[iter]}\n")
                 
             # recap 
@@ -116,12 +114,13 @@ def run_script(method_func, outbox, n_run, max_depth, generations, pop_size, ite
             results_file.writelines(f"{f}\n" for f in f1_validation)
 
             results_file.write(f"\nMEAN F1 OF RUN {i}: {avg}\n\n")
-            
+
+    end = datetime.datetime.now().timestamp()
     # final result given as the average of all f1s of the various runs carried out
     avg = sum(map(float, avg_f1)) / n_run #len(avg_f1)
     with open(filename, "a") as results_file:
         results_file.write("\n\n------------------------------------------------------------------------------")
-        results_file.write(f"\nF1 OVERALL AVERAGE OF ALL RUNS: {avg}")
+        results_file.write(f"\nF1 OVERALL AVERAGE OF ALL RUNS: {avg}\nRUNNING TIME: {(end - start) / 60} minutes")
 
 # to display the chart at the end of each run
 def graph(frame, f1_training, f1_validation, n_run):
@@ -129,12 +128,8 @@ def graph(frame, f1_training, f1_validation, n_run):
     for widget in frame.grid_slaves():
         if int(widget.grid_info()["row"]) == 5 and int(widget.grid_info()["column"]) == 0:
             widget.grid_forget()
-    x1 = []
-    x2 = []
-    for i in range(len(f1_training)):
-        x1.append(i+1)
-    for i in range(len(f1_validation)):
-        x2.append(i+1)
+    x1 = list(range(1, len(f1_training) + 1))
+    x2 = list(range(1, len(f1_validation) + 1))
     # create scatter plot, also use plot to have line joining
     fig = Figure(figsize=(7, 3), dpi=100)
     ax = fig.add_subplot(111)
