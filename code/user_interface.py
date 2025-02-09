@@ -87,7 +87,7 @@ def run_script(method_func, outbox, n_run, max_depth, generations, pop_size, ite
         results_file.write(f"Parameters set:\ngenerations: {generations}\niterations: {iterations}\nmax depth: {max_depth}\nindividuals to keep: {inds_to_keep}\nnumber of runs: {n_run}\nkernel size: {kernel_size}\npopulation size: {pop_size}\ndataset: {file_path}\n\n")
 
     for i in range(n_run):
-        f1_validation, f1_test, statistic = method_func(file_path, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size, i)
+        f1_validation, f1_test, statistic = method_func(file_path, outbox, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size, i)
         if i == n_run-1:
             outbox.insert(tk.END, "Algorithm finished, charts view:")
         else:

@@ -4,6 +4,7 @@ import random
 from deap import tools
 from deap.algorithms import varAnd
 from matplotlib import pyplot as plt
+import tkinter as tk
 import numpy as np
 from sklearn.calibration import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
@@ -110,9 +111,9 @@ def depth_tree(string):
     regex_neg2 = r'(?:neg)\((?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_depth1+r'|'+regex_execTree_depth1+r')\)'
     regex_depth2_exec = r'(?:execTree\d+)\((?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_execTree_depth1+r'|'+regex_depth1+r')\,(?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_execTree_depth1+r'|'+regex_depth1+r')\,(?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_execTree_depth1+r'|'+regex_depth1+r')\,(?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_execTree_depth1+r'|'+regex_depth1+r')\)'
 
-    if (re.match(regex_depth1, string) or re.match(regex_execTree_depth1, string)):
+    if re.match(regex_depth1, string) or re.match(regex_execTree_depth1, string):
         return 1
-    if ((re.match(regex_depth2, string)) or (re.match(regex_neg2, string)) or (re.match(regex_depth2_exec, string))):
+    if re.match(regex_depth2, string) or re.match(regex_neg2, string) or re.match(regex_depth2_exec, string):
         return 2
     
     return None
@@ -245,7 +246,7 @@ def view_hist_fitness_freq(modules_freq_fitness):
     fig.legend()
     plt.show()
 
-def eaSimple_elit(population, toolbox, cxpb, mutpb, ngen, stats=None,
+def eaSimple_elit(outbox, population, toolbox, cxpb, mutpb, ngen, stats=None,
              halloffame=None, verbose=__debug__):
     
     logbook = tools.Logbook()
@@ -263,7 +264,8 @@ def eaSimple_elit(population, toolbox, cxpb, mutpb, ngen, stats=None,
     record = stats.compile(population) if stats else {}
     logbook.record(gen=0, nevals=len(invalid_ind), **record)
     if verbose:
-        print(logbook.stream)
+        #print(logbook.stream)
+        outbox.insert(tk.END, f"\n{logbook.stream}\n")
 
     best_ind = None
     # Begin the generational process
@@ -301,6 +303,7 @@ def eaSimple_elit(population, toolbox, cxpb, mutpb, ngen, stats=None,
         record = stats.compile(population) if stats else {}
         logbook.record(gen=gen, nevals=len(invalid_ind), **record)
         if verbose:
-            print(logbook.stream)
+            #print(logbook.stream)
+            outbox.insert(tk.END, f"\n{logbook.stream}\n")
 
     return population, logbook
