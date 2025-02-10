@@ -12,7 +12,7 @@ matplotlib.use('TkAgg')
 import pathos.multiprocessing as multiprocessing
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
-def modularGP_CellaMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
+def modularGP_CellaMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     MIN_DEPTH = 4
 
     train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset(file_path)
@@ -100,11 +100,12 @@ def modularGP_CellaMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULAT
     def mul(x, y):
         try:
             result = x * y
-            if math.isinf(result):
+            if math.isinf(result) or math.isnan(result):
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
-            print(f"Error in mul({x}, {y}): {e}")
+            outbox.insert(tk.END, f"Error in mul({x}, {y}): {e}\n")
+            #print(f"Error in mul({x}, {y}): {e}")
             return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
 
     def protectedDiv(x, y):
@@ -112,11 +113,12 @@ def modularGP_CellaMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULAT
             if y == 0:
                 return 1
             result = x / y
-            if math.isinf(result):
+            if math.isinf(result) or math.isnan(result):
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
-            print(f"Error in protectedDiv({x}, {y}): {e}")
+            outbox.insert(tk.END, f"Error in protectedDiv({x}, {y}): {e}\n")
+            #print(f"Error in protectedDiv({x}, {y}): {e}")
             return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
     
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
@@ -262,7 +264,7 @@ def modularGP_CellaMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULAT
     
     return hof[N_ITERATIONS-1][0], validation_f1, f1_score, statistic
 
-def modularGP_StefanoMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
+def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     MIN_DEPTH = 4
 
     train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset(file_path)
@@ -339,7 +341,7 @@ def modularGP_StefanoMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPUL
     def mul(x, y):
         try:
             result = x * y
-            if math.isinf(result):
+            if math.isinf(result) or math.isnan(result):
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
@@ -352,7 +354,7 @@ def modularGP_StefanoMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPUL
             if y == 0:
                 return 1
             result = x / y
-            if math.isinf(result):
+            if math.isinf(result) or math.isnan(result):
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
@@ -385,7 +387,7 @@ def modularGP_StefanoMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPUL
     
     # register new op
     toolbox.register("mutate_insert", gp.mutInsert, pset=pset)
-    # duplicated 
+    # duplicated? It may be useful only for calculating the probabilities dinamically
     toolbox.register("mate_subtree", gp.cxOnePoint)
     toolbox.register("mutate_subtree", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
     toolbox.register("mutate_point", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
@@ -515,7 +517,6 @@ def modularGP_StefanoMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPUL
             cntTree += 1
 
     # save
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     with open(f"modularGP_StefanoMethod_best_individual_{current_time}.pickle", "wb") as f:
         dill.dump(hof[N_ITERATIONS-1][0], f)
     with open(f"modularGP_StefanoMethod_pset_{current_time}.pkl", "wb") as p:
@@ -523,10 +524,10 @@ def modularGP_StefanoMethod(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPUL
 
     return hof[N_ITERATIONS-1][0], validation_f1, f1_score, statistic
 
-def classicalGP(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
+def classicalGP(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     pass
 
-def classicalGP(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, _, __, KERNEL_SIZE, const):
+def classicalGP(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, _, __, KERNEL_SIZE, const):
     MIN_DEPTH = 4
 
     train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset(file_path)
@@ -552,11 +553,41 @@ def classicalGP(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, _, __
         outbox.insert(tk.END, f"Reached {mean_f1} F1 on {type} set\n")
         return mean_f1
     
+    max_val=1.5e+100
+    min_val=1.5e-100
+    def mul(x, y):
+        try:
+            result = x * y
+            if math.isinf(result) or math.isnan(result):
+                return max_val if result > 0 else min_val
+            return result
+        except Exception as e:
+            outbox.insert(tk.END, f"Error in mul({x}, {y}): {e}\n")
+            #print(f"Error in mul({x}, {y}): {e}")
+            return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
+
+    def protectedDiv(x, y):
+        try:
+            if y == 0:
+                return 1
+            result = x / y
+            if math.isinf(result) or math.isnan(result):
+                return max_val if result > 0 else min_val
+            return result
+        except Exception as e:
+            outbox.insert(tk.END, f"Error in protectedDiv({x}, {y}): {e}\n")
+            #print(f"Error in protectedDiv({x}, {y}): {e}")
+            return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
+
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
     pset.addPrimitive(operator.add, 2)
     pset.addPrimitive(operator.sub, 2)
-    pset.addPrimitive(operator.mul, 2)
-    pset.addPrimitive(lambda x, y: x / y if y != 0 else 1, 2)
+
+    pset.addPrimitive(mul, 2)
+    pset.addPrimitive(protectedDiv, 2)
+    #pset.addPrimitive(operator.mul, 2)
+    #pset.addPrimitive(lambda x, y: x / y if y != 0 else 1, 2)
+
     pset.addPrimitive(operator.neg, 1)
     pset.addEphemeralConstant(f"rand101_{const}", lambda: random.randint(-1, 1))
     
@@ -597,6 +628,12 @@ def classicalGP(file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, _, __
     f1_score.append(f1_testSet)
     statistic.append(log)
     
+    # save
+    with open(f"classicalGP_best_individual_{current_time}.pickle", "wb") as f:
+        dill.dump(hof[0], f)
+    with open(f"classicalGP_pset_{current_time}.pkl", "wb") as p:
+        dill.dump(pset, p)
+
     return hof[0], validation_f1, f1_score, statistic
 
 

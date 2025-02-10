@@ -215,7 +215,6 @@ def depth_list(individuo):
     
     return max(max_depth(node) for node in adj_list)
 
-# displays forms that occur more frequently than 5
 def view_hist(module_freq, depth):
     plt.subplots(figsize=(8, 6))
     keys = list(module_freq.keys())

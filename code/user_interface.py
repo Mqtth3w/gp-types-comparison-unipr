@@ -68,9 +68,9 @@ def strat_modularGP_StefanoMethod(event, outbox, n_run, max_depth, generations, 
     run_script(modularGP_StefanoMethod, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
     event.set()
 
-def start_classicalGP(event, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def start_classicalGP(event, outbox, _, max_depth, generations, pop_size, __, ___, kernel_size):
     outbox.delete(1.0, tk.END)
-    run_script(classicalGP, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
+    run_script(classicalGP, outbox, 1, max_depth, generations, pop_size, __, ___, kernel_size)
     event.set()
 
 def run_script(method_func, outbox, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
@@ -85,10 +85,12 @@ def run_script(method_func, outbox, n_run, max_depth, generations, pop_size, ite
     
     # run the script n times and save the results to a file
     with open(filename, "w") as results_file:
-        results_file.write(f"Parameters set:\ngenerations: {generations}\niterations: {iterations}\nmax depth: {max_depth}\nindividuals to keep: {inds_to_keep}\nnumber of runs: {n_run}\nkernel size: {kernel_size}\npopulation size: {pop_size}\ndataset: {file_path}\n\n")
-
+        results_file.write("generations;iterations;max_depth;individuals_to_keep;runs;kernel_size;population_size;dataset\n")
+        results_file.write(f"{generations};{iterations};{max_depth};{inds_to_keep};{n_run};{kernel_size};{pop_size};{file_path}\n")
     for i in range(n_run):
-        f1_validation, f1_test, statistic = method_func(file_path, outbox, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size, i)
+        run_start = datetime.datetime.now().timestamp()
+        num_nodes, f1_validation, f1_test, statistics = method_func(current_time, file_path, outbox, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size, i)
+        run_end = datetime.datetime.now().timestamp()
         if i == n_run-1:
             outbox.insert(tk.END, "Algorithm finished, charts view:")
         else:
@@ -98,48 +100,40 @@ def run_script(method_func, outbox, n_run, max_depth, generations, pop_size, ite
         graph(frame, outbox_col, f1_test, f1_validation, i)
         # save results
         with open(filename, "a") as results_file:
-            results_file.write("\n------------------------------------------------------------------------------")
-            results_file.write(f"\nRUN {i}\n") 
+            results_file.write("\n--------------------\n--------------------\n")
+            results_file.write(f"run;iteration;test_f1;validation_f1;statistics\n") 
 
             for iter in range(int(iterations)):
-                results_file.write(f"Iteration {iter} Statistics: {statistic[iter]}\n")
-                results_file.write(f"F1 on test set of iter {iter}: {f1_test[iter]}\n")
+                results_file.write(f"{i};{iter};{f1_test[iter]};{f1_validation[iter]};{statistics[iter]}\n")
                 
-            # recap 
-            results_file.write(f"\nRECAP\nF1 on test set of run {i}:\n")
+            # avg f1 of the run
             avg = sum(map(float, f1_test)) / iterations #len(f1_test)
             avg_f1.append(avg)
-            results_file.writelines(f"{f}\n" for f in f1_test)            
 
-            results_file.write(f"\n\nF1 on validation set of run {i}:\n")
-            results_file.writelines(f"{f}\n" for f in f1_validation)
-
-            results_file.write(f"\nMEAN F1 OF RUN {i}: {avg}\n\n")
+            results_file.write("\n--------------------\n")
+            results_file.write(f"run;avg_test_f1;num_nodes_best_ind;run_time_min\n{i};{avg};{num_nodes};{(run_end - run_start) / 60}\n")
 
     end = datetime.datetime.now().timestamp()
     # final result given as the average of all f1s of the various runs carried out
     avg = sum(map(float, avg_f1)) / n_run #len(avg_f1)
     with open(filename, "a") as results_file:
-        results_file.write("\n\n------------------------------------------------------------------------------")
-        results_file.write(f"\nF1 OVERALL AVERAGE OF ALL RUNS: {avg}\nRUNNING TIME: {(end - start) / 60} minutes")
+        results_file.write("\n--------------------\n--------------------\n--------------------\n")
+        results_file.write(f"F1_OVERALL_AVERAGE_OF_ALL_RUNS;OVERALL_RUNNING_TIME_MIN\n")
+        results_file.write(f"{avg};{(end - start) / 60}\n")
 
 # to display the chart at the end of each run
 def graph(frame, outbox_col, f1_training, f1_validation, n_run):
     chart_row = 2
     # remove the previous chart for the specific outbox column
     for widget in frame.grid_slaves():
-        # Check if the widget is in the correct column and row for the chart
         if int(widget.grid_info().get("row", 0)) == chart_row and int(widget.grid_info().get("column", 0)) == outbox_col:
-            widget.grid_forget()  # Remove only the chart in the specific outbox position
-
+            widget.grid_forget() # remove only the chart in the specific outbox position
+    # figure
     x1 = list(range(1, len(f1_training) + 1))
     x2 = list(range(1, len(f1_validation) + 1))
-
-    # Create the figure for the graph
-    fig = plt.Figure(figsize=(5, 4), dpi=90)
+    fig = plt.Figure(figsize=(5, 4), dpi=95)
     ax = fig.add_subplot(111)
-
-    # Plot the data
+    # plot
     ax.scatter(x1, f1_training, color='blue', label='TEST SET')
     ax.scatter(x2, f1_validation, color='red', label='VALIDATION SET')
     ax.plot(x1, f1_training, color='blue')
@@ -148,13 +142,9 @@ def graph(frame, outbox_col, f1_training, f1_validation, n_run):
     ax.set_ylabel('F1')
     ax.set_title(f'Validation and Test Set F1, Run Number: {n_run}')
     ax.legend()
-
-    # Create the canvas and add it to the grid in the correct position (directly below the outbox)
     canvas = FigureCanvasTkAgg(fig, master=frame)
     canvas.draw()
-
-    # Place the chart directly below the corresponding outbox
-    canvas.get_tk_widget().grid(row=chart_row, column=outbox_col, padx=20, pady=10)
+    canvas.get_tk_widget().grid(row=chart_row, column=outbox_col, padx=5, pady=5)
 
 running = False
 def ui():
@@ -272,9 +262,9 @@ def ui():
     # classicalGP
     outbox3 = scrolledtext.ScrolledText(output_frame, wrap=tk.WORD, width=55, height=20)
     outbox3.grid(row=1, column=2, padx=5, pady=5, sticky="news")
-    #graph(output_frame, list(range(1, 1100, 2)), list(range(1, 1010)), 1, 1)
-    #graph(output_frame, list(x*x for x in range(1, 2200, 1)), list(x*x for x in range(1, 2020, 2)), 1, 2)
-    #graph(output_frame, list(x*x*2 for x in range(1, 3030, 2)), list(x*x*2 for x in range(1, 3030, 3)), 1, 3)
+    graph(output_frame, 0, list(range(1, 1100, 2)), list(range(1, 1010)), 1)
+    graph(output_frame, 1, list(x*x for x in range(1, 2200, 1)), list(x*x for x in range(1, 2020, 2)), 1)
+    graph(output_frame, 2, list(x*x*2 for x in range(1, 3030, 2)), list(x*x*2 for x in range(1, 3030, 3)), 1)
     root.mainloop()
 
     
