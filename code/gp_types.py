@@ -1,5 +1,5 @@
 # initially developed by Arianna Cella, reviewed by Francesca Stefano and afterwards by Matteo Gianvenuti
-
+import functools
 import datetime
 import math
 import operator
@@ -9,14 +9,14 @@ from utils import *
 from data_loader import load_dataset
 import matplotlib
 matplotlib.use('TkAgg')
-import pathos.multiprocessing as multiprocessing
-from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
+#import pathos.multiprocessing as multiprocessing
+#from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
-def modularGP_CellaMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
+def modularGP_CellaMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     MIN_DEPTH = 4
 
     train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset(file_path)
-    validation_f1, f1_score, statistic  = [], [], []
+    validation_f1, f1_score, statistics  = [], [], []
 
     def evalTrainingSet(individual):
         # compilation of the individual
@@ -41,8 +41,7 @@ def modularGP_CellaMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATI
         new_train_set = convolution(func, train_data, KERNEL_SIZE)
         new_data = convolution(func, data, KERNEL_SIZE)
         mean_f1, Y_labels_multi, y_predictions, rf = training_rf(new_train_set, train_labels, new_data, labels)
-        outbox.insert(tk.END, f"Reached {mean_f1} F1 on {type} set\n")
-        #print(f"Reached {mean_f1} F1 on {type} set") 
+        print(f"(modularGP_CellaMethod) Reached {mean_f1} F1 on {type} set") 
         '''
         # confusion matrix
         conf_matrix = confusion_matrix(Y_labels_multi, y_predictions, labels=rf.classes_)
@@ -87,16 +86,14 @@ def modularGP_CellaMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATI
             else:
                 break
 
-        outbox.insert(tk.END, "\nIndividuals to keep:\n")
         #print("\nIndividuals to keep:")
-        for i in range(len(individuals_to_keep)):
+        #for i in range(len(individuals_to_keep)):
             #print(f"{i}: {individuals_to_keep[i]}")
-            outbox.insert(tk.END, f"{i}: {individuals_to_keep[i]}\n")
 
         return individuals_to_keep
 
-    max_val=1.5e+100
-    min_val=1.5e-100
+    max_val = 1.5e+100
+    min_val = 1.5e-100
     def mul(x, y):
         try:
             result = x * y
@@ -104,8 +101,7 @@ def modularGP_CellaMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATI
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
-            outbox.insert(tk.END, f"Error in mul({x}, {y}): {e}\n")
-            #print(f"Error in mul({x}, {y}): {e}")
+            print(f"(modularGP_CellaMethod) Error in mul({x}, {y}): {e}")
             return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
 
     def protectedDiv(x, y):
@@ -117,8 +113,7 @@ def modularGP_CellaMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATI
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
-            outbox.insert(tk.END, f"Error in protectedDiv({x}, {y}): {e}\n")
-            #print(f"Error in protectedDiv({x}, {y}): {e}")
+            print(f"(modularGP_CellaMethod) Error in protectedDiv({x}, {y}): {e}")
             return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
     
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
@@ -127,7 +122,8 @@ def modularGP_CellaMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATI
     pset.addPrimitive(mul, 2)
     pset.addPrimitive(protectedDiv, 2)
     pset.addPrimitive(operator.neg, 1)
-    pset.addEphemeralConstant(f"rand101_{const}", lambda: random.randint(-1, 1))
+    pset.addEphemeralConstant(f"rand101_{const}", functools.partial(random.randint, -1, 1))
+    #pset.addEphemeralConstant(f"rand101_{const}", lambda: random.randint(-1, 1)) # lambda is anonym and cannot be serialized by pickle
 
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
     creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
@@ -176,15 +172,14 @@ def modularGP_CellaMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATI
         nonlocal cnt_arg
         output = f"ARG{cnt_arg}"
         cnt_arg = (cnt_arg + 1) % 3
-        print(outbox)
         return output
     
     hof = [None] * N_ITERATIONS
     individuals_to_keep = [None] * N_ITERATIONS
     cntTree = 0
     cnt_arg = 0
-    ind_best = None
-
+    best_ind = None
+    
     for cnt in range(N_ITERATIONS):
         pop = toolbox.population(n=N_POPULATION)
         
@@ -193,39 +188,37 @@ def modularGP_CellaMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATI
             identity = creator.Individual(identity)
             pop[random.randrange(N_POPULATION // 2)] = identity
         
-        if ind_best is not None:
-            pop[random.randrange(N_POPULATION // 2, N_POPULATION)] = ind_best
-
+        if best_ind is not None:
+            pop[random.randrange(N_POPULATION // 2, N_POPULATION)] = best_ind
+        
         hof[cnt] = tools.HallOfFame(3)
-        pop, log = eaSimple_elit(outbox, pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof[cnt], verbose=True)
-
-        outbox.insert(tk.END, f"Best individual: {hof[cnt][0]}\n")
-        #print(f"Best individual: {hof[cnt][0]}")
+        pop, log = eaSimple_elit(pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof[cnt], verbose=False)
+        
+        best_ind = hof[cnt][0]
+        print(f"(modularGP_CellaMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual: {best_ind}\n")
         
         # evaluation on training, validation and test sets
-        f1_testSet = evalSet(hof[cnt][0], test_data, test_labels, "test")
-        f1_valSet = evalSet(hof[cnt][0], val_data, val_labels, "validation")
+        f1_testSet = evalSet(best_ind, test_data, test_labels, "test")
+        f1_valSet = evalSet(best_ind, val_data, val_labels, "validation")
         validation_f1.append(f1_valSet)
         f1_score.append(f1_testSet)
-        statistic.append(log)
+        statistics.append(log)
         
         modules_depth1, modules_depth2 = get_modules_tree(pop)
         
         # frequency charts
         #view_hist(modules_depth1, 1)
         #view_hist(modules_depth2, 2)
-
+        
         # selection of individuals to be maintained
         individuals_to_keep[cnt] = get_individuals_to_keep(N_IND_TO_KEEP, modules_depth1, modules_depth2)
         
         cnt_arg = 0
         for i in range(len(individuals_to_keep[cnt])):
             individuals_to_keep[cnt][i] = re.sub(r'ARG\d+', replace, individuals_to_keep[cnt][i])
-
+        
         individuals_to_keep[cnt] = list(set(individuals_to_keep[cnt]))
         
-        ind_best = hof[cnt][0]
-
         # transformation of strings into individuals
         for i in range(len(individuals_to_keep[cnt])):
             individuals_to_keep[cnt][i] = creator.Individual(
@@ -244,31 +237,30 @@ def modularGP_CellaMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATI
                 func = gp.compile(expr=ind, pset=new_pset_depth1)
                 pset.addPrimitive(func, 2, name=f"execTree{cnt1}")
             else:
-                outbox.insert(tk.END, "MODULE ERROR: NOT OF DEPTH 1 OR 2\n")
-                #print("MODULE ERROR: NOT OF DEPTH 1 OR 2")
+                print("MODULE ERROR: NOT OF DEPTH 1 OR 2")
             cnt1 += 1
-
+        
         for ind in individuals_to_keep[cnt]:
             depth_level = depth_tree(str(ind))
             func = gp.compile(expr=ind, pset=(new_pset_depth2 if depth_level == 2 else new_pset_depth1))
             new_pset_depth1.addPrimitive(func, 2, name=f"execTree{cntTree}")
             new_pset_depth2.addPrimitive(func, 4, name=f"execTree{cntTree}")
             cntTree += 1
-
+    
     # save
     current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     with open(f"modularGP_CellaMethod_best_individual_{current_time}.pickle", "wb") as f:
-        dill.dump(hof[N_ITERATIONS-1][0], f)
+        dill.dump(best_ind, f)
     with open(f"modularGP_CellaMethod_pset_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
     
-    return hof[N_ITERATIONS-1][0], validation_f1, f1_score, statistic
+    return best_ind, None, validation_f1, f1_score, statistics
 
-def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
+def modularGP_StefanoMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     MIN_DEPTH = 4
 
     train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset(file_path)
-    validation_f1, f1_score, statistic  = [], [], []
+    validation_f1, f1_score, statistics  = [], [], []
 
     def evalTrainingSet(individual):
         clf = gp.PrimitiveTree(individual)
@@ -287,23 +279,18 @@ def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERA
         new_train_set = convolution(func, train_data, KERNEL_SIZE)
         new_data = convolution(func, data, KERNEL_SIZE)
         mean_f1, _, _, _ = training_rf(new_train_set, train_labels, new_data, labels)
-        outbox.insert(tk.END, f"Reached {mean_f1} F1 on {type} set\n")
-        #print(f"Reached {mean_f1} F1 on {type} set") 
+        print(f"(modularGP_StefanoMethod) Reached {mean_f1} F1 on {type} set") 
         return mean_f1
 
     def get_individuals_to_keep(n, modules_depth1, modules_depth2):
         '''
-        outbox.insert(tk.END, "Modules depth 1:\n")
         #print("Modules depth 1:")
         for key, value in modules_depth1.items():
             #print(f"{key}: {value}")
-            outbox.insert(tk.END, f"{key}: {value}\n")
 
-        outbox.insert(tk.END, "Modules depth 2:\n")
         #print("Modules depth 2:")
         for key, value in modules_depth2.items():
             #print(f"{key}: {value}")
-            outbox.insert(tk.END, f"{key}: {value}\n")
         '''
         sorted_modules_1 = dict(sorted(modules_depth1.items(), key=lambda x: x[1][0], reverse=True))
         sorted_modules_2 = dict(sorted(modules_depth2.items(), key=lambda x: x[1][0], reverse=True))
@@ -328,16 +315,14 @@ def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERA
         sorted_modules_fitness = dict(sorted(modules_freq.items(), key=lambda x: x[1][1], reverse=True))
         individuals_to_keep = [module for module in sorted_modules_fitness.keys() if len(module) > 1][:n]
 
-        outbox.insert(tk.END, "\nIndividuals to keep:\n")
         #print("\nIndividuals to keep:")
-        for i, module in enumerate(individuals_to_keep):
+        #for i, module in enumerate(individuals_to_keep):
             #print(f"{i}: {module}")
-            outbox.insert(tk.END, f"{i}: {module}\n")
 
         return individuals_to_keep
 
-    max_val=1.5e+100
-    min_val=1.5e-100
+    max_val = 1.5e+100
+    min_val = 1.5e-100
     def mul(x, y):
         try:
             result = x * y
@@ -345,8 +330,7 @@ def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERA
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
-            outbox.insert(tk.END, f"Error in mul({x}, {y}): {e}\n")
-            #print(f"Error in mul({x}, {y}): {e}")
+            print(f"(modularGP_StefanoMethod) Error in mul({x}, {y}): {e}")
             return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
 
     def protectedDiv(x, y):
@@ -358,8 +342,7 @@ def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERA
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
-            outbox.insert(tk.END, f"Error in protectedDiv({x}, {y}): {e}\n")
-            #print(f"Error in protectedDiv({x}, {y}): {e}")
+            print(f"(modularGP_StefanoMethod) Error in protectedDiv({x}, {y}): {e}")
             return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
 
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
@@ -368,7 +351,8 @@ def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERA
     pset.addPrimitive(mul, 2)
     pset.addPrimitive(protectedDiv, 2)
     pset.addPrimitive(operator.neg, 1)
-    pset.addEphemeralConstant(f"rand101_{const}", lambda: random.randint(-1, 1))
+    pset.addEphemeralConstant(f"rand101_{const}", functools.partial(random.randint, -1, 1))
+    #pset.addEphemeralConstant(f"rand101_{const}", lambda: random.randint(-1, 1))
 
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
     creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
@@ -421,7 +405,7 @@ def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERA
     hof = [None] * N_ITERATIONS
     individuals_to_keep = [None] * N_ITERATIONS
     cntTree = 0
-    ind_best = None
+    best_ind = None
 
     def adjust_probabilities(population, gen):
         """Adjust probabilities of mutation and crossover based on population diversity or fitness stagnation."""
@@ -461,8 +445,8 @@ def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERA
             identity = creator.Individual(identity)
             pop[random.randrange(N_POPULATION // 2)] = identity
         
-        if ind_best is not None:
-            pop[random.randrange(N_POPULATION // 2, N_POPULATION)] = ind_best
+        if best_ind is not None:
+            pop[random.randrange(N_POPULATION // 2, N_POPULATION)] = best_ind
 
         hof[cnt] = tools.HallOfFame(3)
         
@@ -476,12 +460,12 @@ def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERA
             cxpb, mutpb = adjust_probabilities(pop, gen)
             pop = toolbox.select(pop, len(pop))
             log = mstats.compile(pop)
-            statistic.append(log)
+            statistics.append(log)
 
-        outbox.insert(tk.END, f"Best individual: {hof[cnt][0]}\n")
-        #print(f"Best individual: {hof[cnt][0]}")
-        f1_testSet = evalSet(hof[cnt][0], test_data, test_labels, "test")
-        f1_valSet = evalSet(hof[cnt][0], val_data, val_labels, "validation")
+        best_ind = hof[cnt][0]
+        print(f"(modularGP_StefanoMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual: {best_ind}\n")
+        f1_testSet = evalSet(best_ind, test_data, test_labels, "test")
+        f1_valSet = evalSet(best_ind, val_data, val_labels, "validation")
         validation_f1.append(f1_valSet)
         f1_score.append(f1_testSet)
         
@@ -505,8 +489,7 @@ def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERA
                 func = gp.compile(expr=ind, pset=new_pset_depth1)
                 pset.addPrimitive(func, 2, name=f"execTree{cnt1}")
             else:
-                outbox.insert(tk.END, "MODULE ERROR: NOT OF DEPTH 1 OR 2\n")
-                #print("MODULE ERROR: NOT OF DEPTH 1 OR 2")
+                print("(modularGP_StefanoMethod) MODULE ERROR: NOT OF DEPTH 1 OR 2")
             cnt1 += 1
 
         for ind in individuals_to_keep[cnt]:
@@ -518,20 +501,21 @@ def modularGP_StefanoMethod(current_time, file_path, outbox, MAX_DEPTH, N_GENERA
 
     # save
     with open(f"modularGP_StefanoMethod_best_individual_{current_time}.pickle", "wb") as f:
-        dill.dump(hof[N_ITERATIONS-1][0], f)
+        dill.dump(best_ind, f)
     with open(f"modularGP_StefanoMethod_pset_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
 
-    return hof[N_ITERATIONS-1][0], validation_f1, f1_score, statistic
+    return best_ind, None, validation_f1, f1_score, statistics
 
-def classicalGP(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
+'''
+def classicalGP(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     pass
-
-def classicalGP(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POPULATION, _, __, KERNEL_SIZE, const):
+'''
+def classicalGP(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION, _, __, KERNEL_SIZE, const):
     MIN_DEPTH = 4
 
     train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset(file_path)
-    validation_f1, f1_score, statistic  = [], [], []
+    validation_f1, f1_score, statistics  = [], [], []
 
     def evalTrainingSet(individual):
         clf = gp.PrimitiveTree(individual)
@@ -550,11 +534,11 @@ def classicalGP(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POP
         new_train_set = convolution(func, train_data, KERNEL_SIZE)
         new_data = convolution(func, data, KERNEL_SIZE)
         mean_f1, _, _, _ = training_rf(new_train_set, train_labels, new_data, labels)
-        outbox.insert(tk.END, f"Reached {mean_f1} F1 on {type} set\n")
+        print(f"(classicalGP) Reached {mean_f1} F1 on {type} set") 
         return mean_f1
     
-    max_val=1.5e+100
-    min_val=1.5e-100
+    max_val = 1.5e+100
+    min_val = 1.5e-100
     def mul(x, y):
         try:
             result = x * y
@@ -562,8 +546,7 @@ def classicalGP(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POP
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
-            outbox.insert(tk.END, f"Error in mul({x}, {y}): {e}\n")
-            #print(f"Error in mul({x}, {y}): {e}")
+            print(f"(classicalGP) Error in mul({x}, {y}): {e}")
             return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
 
     def protectedDiv(x, y):
@@ -575,8 +558,7 @@ def classicalGP(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POP
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
-            outbox.insert(tk.END, f"Error in protectedDiv({x}, {y}): {e}\n")
-            #print(f"Error in protectedDiv({x}, {y}): {e}")
+            print(f"(classicalGP) Error in protectedDiv({x}, {y}): {e}")
             return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
 
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
@@ -589,7 +571,7 @@ def classicalGP(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POP
     #pset.addPrimitive(lambda x, y: x / y if y != 0 else 1, 2)
 
     pset.addPrimitive(operator.neg, 1)
-    pset.addEphemeralConstant(f"rand101_{const}", lambda: random.randint(-1, 1))
+    pset.addEphemeralConstant(f"rand101_{const}", functools.partial(random.randint, -1, 1))
     
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
     creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
@@ -619,14 +601,14 @@ def classicalGP(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POP
     
     hof = tools.HallOfFame(1)
     pop = toolbox.population(n=N_POPULATION)
-    pop, log = eaSimple_elit(outbox, pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof, verbose=True)
+    pop, log = eaSimple_elit(pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof, verbose=False)
     
-    outbox.insert(tk.END, f"Best individual: {hof[0]}\n")
+    print(f"(classicalGP) Best individual: {hof[0]}\n")
     f1_testSet = evalSet(hof[0], test_data, test_labels, "test")
     f1_valSet = evalSet(hof[0], val_data, val_labels, "validation")
     validation_f1.append(f1_valSet)
     f1_score.append(f1_testSet)
-    statistic.append(log)
+    statistics.append(log)
     
     # save
     with open(f"classicalGP_best_individual_{current_time}.pickle", "wb") as f:
@@ -634,7 +616,7 @@ def classicalGP(current_time, file_path, outbox, MAX_DEPTH, N_GENERATIONS, N_POP
     with open(f"classicalGP_pset_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
 
-    return hof[0], validation_f1, f1_score, statistic
+    return hof[0], len(hof[0]), validation_f1, f1_score, statistics
 
 
 

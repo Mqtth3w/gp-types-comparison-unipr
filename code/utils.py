@@ -4,7 +4,6 @@ import random
 from deap import tools
 from deap.algorithms import varAnd
 from matplotlib import pyplot as plt
-import tkinter as tk
 import numpy as np
 from sklearn.calibration import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
@@ -245,7 +244,7 @@ def view_hist_fitness_freq(modules_freq_fitness):
     fig.legend()
     plt.show()
 
-def eaSimple_elit(outbox, population, toolbox, cxpb, mutpb, ngen, stats=None,
+def eaSimple_elit(population, toolbox, cxpb, mutpb, ngen, stats=None,
              halloffame=None, verbose=__debug__):
     
     logbook = tools.Logbook()
@@ -263,8 +262,7 @@ def eaSimple_elit(outbox, population, toolbox, cxpb, mutpb, ngen, stats=None,
     record = stats.compile(population) if stats else {}
     logbook.record(gen=0, nevals=len(invalid_ind), **record)
     if verbose:
-        #print(logbook.stream)
-        outbox.insert(tk.END, f"\n{logbook.stream}\n")
+        print(logbook.stream)
 
     best_ind = None
     # Begin the generational process
@@ -302,7 +300,6 @@ def eaSimple_elit(outbox, population, toolbox, cxpb, mutpb, ngen, stats=None,
         record = stats.compile(population) if stats else {}
         logbook.record(gen=gen, nevals=len(invalid_ind), **record)
         if verbose:
-            #print(logbook.stream)
-            outbox.insert(tk.END, f"\n{logbook.stream}\n")
+            print(logbook.stream)
 
-    return population, logbook
+    return population, logbook.stream
