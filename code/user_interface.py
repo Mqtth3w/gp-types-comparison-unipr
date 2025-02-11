@@ -39,17 +39,15 @@ def run_script(method_func, file_path, verbose, n_run, max_depth, generations, p
     print(f"({method_func.__name__}) outfile {filename}")
     # run the script n times and save the results to a file
     with open(filename, "w") as results_file0:
-        results_file0.write("generations;iterations;max_depth;individuals_to_keep;runs;kernel_size;population_size;dataset\n")
-        results_file0.write(f"{generations};{iterations};{max_depth};{inds_to_keep};{n_run};{kernel_size};{pop_size};{file_path}\n")
+        results_file0.write("runs;max_depth;generations;population_size;iterations;individuals_to_keep;kernel_size;dataset\n")
+        results_file0.write(f"{n_run}:{max_depth};{generations};{pop_size};{iterations};{inds_to_keep};{kernel_size};{file_path}\n")
     for i in range(n_run):
-        print(f"({method_func.__name__}) Run {i+1} starting...")
+        print(f"({method_func.__name__}) Run {i} starting...")
         run_start = datetime.datetime.now().timestamp()
         _, num_nodes, f1_validation, f1_test, _ = method_func(current_time, file_path, verbose, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size, i)
         run_end = datetime.datetime.now().timestamp()
         print(f"({method_func.__name__}) Run {i} completed, run time {(run_end - run_start) / 60} minutes")
         
-        # at the end of the program run display the charts of the results on validation and training set
-        #graph(frame, outbox_col, f1_test, f1_validation, i)
         # save results
         with open(filename, "a") as results_file:
             results_file.write("\n--------------------\n--------------------\n")
@@ -80,7 +78,7 @@ def ui():
     root.geometry("1100x450") #WxH
 
     frame=tk.Frame(root)
-    frame.pack()
+    frame.pack(fill="both", expand=True)
 
     param_into_frame = tk.LabelFrame(frame, text="Insert parameters")
     param_into_frame.grid(row=0, column=0, padx=20, pady=10, sticky="news")
@@ -133,7 +131,7 @@ def ui():
     kernel.grid(row=2, column=2, padx=50, pady=10)
     kernel_combobox.grid(row=3, column=2, padx=50, pady=10)
     
-    options = [False, True]
+    options = ["False", "True"]
     verbose_option = tk.StringVar(param_into_frame)
     verbose_option.set(options[0]) # default option
     verbose = tk.Label(param_into_frame, text="Verbose")
@@ -145,28 +143,28 @@ def ui():
     dataset_into_frame.grid(row=1, column=0, padx=20, pady=20, sticky="news")
 
     # upload csv file (dataset)
-    button = tk.Button(dataset_into_frame, text="Upload csv dataset", command=upload_csv)
+    button = ttk.Button(dataset_into_frame, text="Upload csv dataset", command=upload_csv)
     button.grid(row=0, column=0, padx=50, pady=20)
     
     # run buttons
     buttons_frame = tk.LabelFrame(frame, text="Run method")
     buttons_frame.grid(row=2, column=0, padx=20, pady=20, sticky="news")
     # modularGP_CellaMethod
-    button1 = tk.Button(buttons_frame, text="Run  modularGP_CellaMethod", command=lambda: start_task(modularGP_CellaMethod, bool(verbose_option.get()),
+    button1 = ttk.Button(buttons_frame, text="Run  modularGP_CellaMethod", command=lambda: start_task(modularGP_CellaMethod, verbose_option.get() == "True",
                                                                                  int(n_run_spinbox.get()), int(max_depth_spinbox.get()), 
                                                                                  int(selected_option_generation.get()), int(selected_option_popolation.get()), 
                                                                                  int(selected_option_iteration.get()), int(ind_to_keep_spinbox.get()),
                                                                                  int(kernel_size_option.get())))
     button1.grid(row=0, column=0, sticky="news", padx=20, pady=10)
     # modularGP_StefanoMethod
-    button2 = tk.Button(buttons_frame, text="Run  modularGP_StefanoMethod", command=lambda: start_task(modularGP_StefanoMethod, bool(verbose_option.get()),
+    button2 = ttk.Button(buttons_frame, text="Run  modularGP_StefanoMethod", command=lambda: start_task(modularGP_StefanoMethod, verbose_option.get() == "True",
                                                                                  int(n_run_spinbox.get()), int(max_depth_spinbox.get()), 
                                                                                  int(selected_option_generation.get()), int(selected_option_popolation.get()), 
                                                                                  int(selected_option_iteration.get()), int(ind_to_keep_spinbox.get()),
                                                                                  int(kernel_size_option.get())))
     button2.grid(row=0, column=1, sticky="news", padx=20, pady=10)
     # classicalGP
-    button3 = tk.Button(buttons_frame, text="Run  classicalGP", command=lambda: start_task(classicalGP, bool(verbose_option.get()),
+    button3 = ttk.Button(buttons_frame, text="Run  classicalGP", command=lambda: start_task(classicalGP, verbose_option.get() == "True",
                                                                                  int(n_run_spinbox.get()), int(max_depth_spinbox.get()), 
                                                                                  int(selected_option_generation.get()), int(selected_option_popolation.get()), 
                                                                                  int(selected_option_iteration.get()), int(ind_to_keep_spinbox.get()),

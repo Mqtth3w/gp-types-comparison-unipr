@@ -92,34 +92,13 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
 
         return individuals_to_keep
 
-    max_val = 1
-    min_val = -1
-    def mul(x, y):
-        try:
-            result = x * y
-            if math.isnan(result):
-                return max_val if result > 0 else min_val
-            return result
-        except Exception as e:
-            print(f"(modularGP_CellaMethod) Error in mul({x}, {y}): {e}")
-            return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
-
     def protectedDiv(x, y):
-        try:
-            if y == 0:
-                return 1
-            result = x / y
-            if math.isnan(result):
-                return max_val if result > 0 else min_val
-            return result
-        except Exception as e:
-            print(f"(modularGP_CellaMethod) Error in protectedDiv({x}, {y}): {e}")
-            return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
+        return 1 if y == 0 else x / y
     
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
     pset.addPrimitive(operator.add, 2)
     pset.addPrimitive(operator.sub, 2)
-    pset.addPrimitive(mul, 2)
+    pset.addPrimitive(operator.mul, 2)
     pset.addPrimitive(protectedDiv, 2)
     pset.addPrimitive(operator.neg, 1)
     pset.addEphemeralConstant(f"rand101_{const}", functools.partial(random.randint, -1, 1))
@@ -156,14 +135,14 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
     new_pset_depth2 = gp.PrimitiveSet("MAIN", 4) 
     new_pset_depth2.addPrimitive(operator.add, 2)
     new_pset_depth2.addPrimitive(operator.sub, 2)
-    new_pset_depth2.addPrimitive(mul, 2)
+    new_pset_depth2.addPrimitive(operator.mul, 2)
     new_pset_depth2.addPrimitive(protectedDiv, 2)
     new_pset_depth2.addPrimitive(operator.neg, 1)
 
     new_pset_depth1 = gp.PrimitiveSet("MAIN", 2) 
     new_pset_depth1.addPrimitive(operator.add, 2)
     new_pset_depth1.addPrimitive(operator.sub, 2)
-    new_pset_depth1.addPrimitive(mul, 2)
+    new_pset_depth1.addPrimitive(operator.mul, 2)
     new_pset_depth1.addPrimitive(protectedDiv, 2)
     new_pset_depth1.addPrimitive(operator.neg, 1)
     
@@ -205,7 +184,8 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
         pop, log = eaSimple_elit(pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof[cnt], verbose=verbose)
         
         best_ind = hof[cnt][0]
-        print(f"(modularGP_CellaMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual ({len(best_ind)}, {count_nodes(best_ind)} nodes): {best_ind}\n")
+        best_ind_len = count_nodes(best_ind)
+        print(f"(modularGP_CellaMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual ({best_ind_len} nodes): {best_ind}\n")
         
         # evaluation on training, validation and test sets
         f1_testSet = evalSet(best_ind, test_data, test_labels, "test")
@@ -255,7 +235,7 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
     with open(f"modularGP_CellaMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
     
-    return best_ind, count_nodes(best_ind), validation_f1, f1_score, statistics
+    return best_ind, best_ind_len, validation_f1, f1_score, statistics
 
 def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     MIN_DEPTH = 4
@@ -322,34 +302,13 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
 
         return individuals_to_keep
 
-    max_val = 1
-    min_val = -1
-    def mul(x, y):
-        try:
-            result = x * y
-            if math.isnan(result):
-                return max_val if result > 0 else min_val
-            return result
-        except Exception as e:
-            print(f"(modularGP_StefanoMethod) Error in mul({x}, {y}): {e}")
-            return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
-
     def protectedDiv(x, y):
-        try:
-            if y == 0:
-                return 1
-            result = x / y
-            if math.isnan(result):
-                return max_val if result > 0 else min_val
-            return result
-        except Exception as e:
-            print(f"(modularGP_StefanoMethod) Error in protectedDiv({x}, {y}): {e}")
-            return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
+        return 1 if y == 0 else x / y
 
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
     pset.addPrimitive(operator.add, 2)
     pset.addPrimitive(operator.sub, 2)
-    pset.addPrimitive(mul, 2)
+    pset.addPrimitive(operator.mul, 2)
     pset.addPrimitive(protectedDiv, 2)
     pset.addPrimitive(operator.neg, 1)
     pset.addEphemeralConstant(f"rand101_{const}", functools.partial(random.randint, -1, 1))
@@ -370,7 +329,7 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
     toolbox.register("expr_mut", gp.genFull, min_=MIN_DEPTH, max_=MAX_DEPTH)
     toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
     
-    # register new op
+    # register new "op"
     toolbox.register("mutate_insert", gp.mutInsert, pset=pset)
     # duplicated? It may be useful only for calculating the probabilities dinamically
     toolbox.register("mate_subtree", gp.cxOnePoint)
@@ -392,14 +351,14 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
     new_pset_depth2 = gp.PrimitiveSet("MAIN", 4)
     new_pset_depth2.addPrimitive(operator.add, 2)
     new_pset_depth2.addPrimitive(operator.sub, 2)
-    new_pset_depth2.addPrimitive(mul, 2)
+    new_pset_depth2.addPrimitive(operator.mul, 2)
     new_pset_depth2.addPrimitive(protectedDiv, 2)
     new_pset_depth2.addPrimitive(operator.neg, 1)
 
     new_pset_depth1 = gp.PrimitiveSet("MAIN", 2)
     new_pset_depth1.addPrimitive(operator.add, 2)
     new_pset_depth1.addPrimitive(operator.sub, 2)
-    new_pset_depth1.addPrimitive(mul, 2)
+    new_pset_depth1.addPrimitive(operator.mul, 2)
     new_pset_depth1.addPrimitive(protectedDiv, 2)
     new_pset_depth1.addPrimitive(operator.neg, 1)
 
@@ -474,7 +433,8 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
             statistics.append(log)
 
         best_ind = hof[cnt][0]
-        print(f"(modularGP_StefanoMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual ({len(best_ind)} nodes): {best_ind}\n")
+        best_ind_len = count_nodes(best_ind)
+        print(f"(modularGP_StefanoMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual ({best_ind_len} nodes): {best_ind}\n")
         f1_testSet = evalSet(best_ind, test_data, test_labels, "test")
         f1_valSet = evalSet(best_ind, val_data, val_labels, "validation")
         validation_f1.append(f1_valSet)
@@ -507,12 +467,8 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
     with open(f"modularGP_StefanoMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
 
-    return best_ind, count_nodes(best_ind), validation_f1, f1_score, statistics
+    return best_ind, best_ind_len, validation_f1, f1_score, statistics
 
-'''
-def classicalGP(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
-    pass
-'''
 def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_POPULATION, _, __, KERNEL_SIZE, const):
     MIN_DEPTH = 4
 
@@ -539,39 +495,15 @@ def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_PO
         print(f"(classicalGP) Reached {mean_f1} F1 on {type} set") 
         return mean_f1
     
-    max_val = 1
-    min_val = -1
-    def mul(x, y):
-        try:
-            result = x * y
-            if math.isnan(result):
-                return max_val if result > 0 else min_val
-            return result
-        except Exception as e:
-            print(f"(classicalGP) Error in mul({x}, {y}): {e}")
-            return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
-
     def protectedDiv(x, y):
-        try:
-            if y == 0:
-                return 1
-            result = x / y
-            if math.isnan(result):
-                return max_val if result > 0 else min_val
-            return result
-        except Exception as e:
-            print(f"(classicalGP) Error in protectedDiv({x}, {y}): {e}")
-            return max_val if (x > 0 and y > 0) or (x < 0 and y < 0) else min_val
+        return 1 if y == 0 else x / y
 
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
     pset.addPrimitive(operator.add, 2)
     pset.addPrimitive(operator.sub, 2)
-
-    pset.addPrimitive(mul, 2)
+    pset.addPrimitive(operator.mul, 2)
     pset.addPrimitive(protectedDiv, 2)
-    #pset.addPrimitive(operator.mul, 2)
-    #pset.addPrimitive(lambda x, y: x / y if y != 0 else 1, 2)
-
+    
     pset.addPrimitive(operator.neg, 1)
     pset.addEphemeralConstant(f"rand101_{const}", functools.partial(random.randint, -1, 1))
     
