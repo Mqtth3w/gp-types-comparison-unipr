@@ -6,10 +6,10 @@ import os
 import multiprocessing
 from gp_types import *
 
-def threaded_task(task_func, task_func2, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def threaded_task(task_func, task_func2, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     multiprocessing.Process(
         target=task_func,
-        args=(task_func2, file_path, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size),
+        args=(task_func2, file_path, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size),
         daemon=True
     ).start()
     
@@ -22,14 +22,14 @@ def upload_csv():
     if not os.path.isfile(file_path): # should never happen
         messagebox.showerror("Error", "Select only a csv file.")
     
-def start_task(task_func, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def start_task(task_func, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     # params check
     if not(file_path and os.path.isfile(file_path)):
         messagebox.showerror("Error", "Select a csv dataset file.")
         return
-    threaded_task(run_script, task_func, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
+    threaded_task(run_script, task_func, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
 
-def run_script(method_func, file_path, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def run_script(method_func, file_path, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     avg_f1 = []
     current_time = datetime.datetime.now()
     start = current_time.timestamp()
@@ -44,19 +44,19 @@ def run_script(method_func, file_path, n_run, max_depth, generations, pop_size, 
     for i in range(n_run):
         print(f"({method_func.__name__}) Run {i+1} starting...")
         run_start = datetime.datetime.now().timestamp()
-        best_ind, num_nodes, f1_validation, f1_test, statistics = method_func(current_time, file_path, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size, i)
+        _, num_nodes, f1_validation, f1_test, _ = method_func(current_time, file_path, verbose, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size, i)
         run_end = datetime.datetime.now().timestamp()
-        print(f"({method_func.__name__}) Run {i+1}/{n_run+1} completed, run time {(run_end - run_start) / 60} minutes")
+        print(f"({method_func.__name__}) Run {i} completed, run time {(run_end - run_start) / 60} minutes")
         
         # at the end of the program run display the charts of the results on validation and training set
         #graph(frame, outbox_col, f1_test, f1_validation, i)
         # save results
         with open(filename, "a") as results_file:
             results_file.write("\n--------------------\n--------------------\n")
-            results_file.write(f"run;iteration;test_f1;validation_f1;statistics\n") 
+            results_file.write(f"run;iteration;test_f1;validation_f1\n") 
 
             for iter in range(int(iterations)):
-                results_file.write(f"{i};{iter};{f1_test[iter]};{f1_validation[iter]};{statistics[iter]}\n")
+                results_file.write(f"{i};{iter};{f1_test[iter]};{f1_validation[iter]}\n")
                 
             # avg f1 of the run
             avg = sum(map(float, f1_test)) / iterations #len(f1_test)
@@ -117,7 +117,7 @@ def ui():
     n_generations.grid(row=2, column=1, padx=50, pady=10)
     n_generations_combobox.grid(row=3, column=1 , padx=50)
 
-    options = list(range(20, 1001))  
+    options = list(range(20, 1001))
     selected_option_popolation = tk.StringVar(param_into_frame)
     selected_option_popolation.set(options[0])  # default option
     n_popolation = tk.Label(param_into_frame, text="Population size")
@@ -125,13 +125,21 @@ def ui():
     n_popolation.grid(row=0, column=3, padx=50, pady=10)
     n_popolation_combobox.grid(row=1, column=3, padx=50)
 
-    options = list(range(3, 13, 2))  
+    options = list(range(3, 13, 2))
     kernel_size_option = tk.StringVar(param_into_frame)
     kernel_size_option.set(options[0]) # default option
     kernel = tk.Label(param_into_frame, text="Kernel size")
     kernel_combobox = ttk.Combobox(param_into_frame, values=options, textvariable=kernel_size_option)
     kernel.grid(row=2, column=2, padx=50, pady=10)
     kernel_combobox.grid(row=3, column=2, padx=50, pady=10)
+    
+    options = [False, True]
+    verbose_option = tk.StringVar(param_into_frame)
+    verbose_option.set(options[0]) # default option
+    verbose = tk.Label(param_into_frame, text="Verbose")
+    verbose_combobox = ttk.Combobox(param_into_frame, values=options, textvariable=verbose_option)
+    verbose.grid(row=2, column=3, padx=50, pady=10)
+    verbose_combobox.grid(row=3, column=3, padx=50, pady=10)
 
     dataset_into_frame = tk.LabelFrame(frame, text="Insert already formatted dataset label-target for binary classification:")
     dataset_into_frame.grid(row=1, column=0, padx=20, pady=20, sticky="news")
@@ -144,21 +152,21 @@ def ui():
     buttons_frame = tk.LabelFrame(frame, text="Run method")
     buttons_frame.grid(row=2, column=0, padx=20, pady=20, sticky="news")
     # modularGP_CellaMethod
-    button1 = tk.Button(buttons_frame, text="Run modularGP_CellaMethod", command=lambda: start_task(modularGP_CellaMethod, 
+    button1 = tk.Button(buttons_frame, text="Run  modularGP_CellaMethod", command=lambda: start_task(modularGP_CellaMethod, bool(verbose_option.get()),
                                                                                  int(n_run_spinbox.get()), int(max_depth_spinbox.get()), 
                                                                                  int(selected_option_generation.get()), int(selected_option_popolation.get()), 
                                                                                  int(selected_option_iteration.get()), int(ind_to_keep_spinbox.get()),
                                                                                  int(kernel_size_option.get())))
     button1.grid(row=0, column=0, sticky="news", padx=20, pady=10)
     # modularGP_StefanoMethod
-    button2 = tk.Button(buttons_frame, text="Run modularGP_StefanoMethod", command=lambda: start_task(modularGP_StefanoMethod, 
+    button2 = tk.Button(buttons_frame, text="Run  modularGP_StefanoMethod", command=lambda: start_task(modularGP_StefanoMethod, bool(verbose_option.get()),
                                                                                  int(n_run_spinbox.get()), int(max_depth_spinbox.get()), 
                                                                                  int(selected_option_generation.get()), int(selected_option_popolation.get()), 
                                                                                  int(selected_option_iteration.get()), int(ind_to_keep_spinbox.get()),
                                                                                  int(kernel_size_option.get())))
     button2.grid(row=0, column=1, sticky="news", padx=20, pady=10)
     # classicalGP
-    button3 = tk.Button(buttons_frame, text="Run classicalGP", command=lambda: start_task(classicalGP, 
+    button3 = tk.Button(buttons_frame, text="Run  classicalGP", command=lambda: start_task(classicalGP, bool(verbose_option.get()),
                                                                                  int(n_run_spinbox.get()), int(max_depth_spinbox.get()), 
                                                                                  int(selected_option_generation.get()), int(selected_option_popolation.get()), 
                                                                                  int(selected_option_iteration.get()), int(ind_to_keep_spinbox.get()),

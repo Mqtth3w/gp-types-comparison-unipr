@@ -12,7 +12,7 @@ matplotlib.use('TkAgg')
 #import pathos.multiprocessing as multiprocessing
 #from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
-def modularGP_CellaMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
+def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     MIN_DEPTH = 4
 
     train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset(file_path)
@@ -92,12 +92,12 @@ def modularGP_CellaMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_P
 
         return individuals_to_keep
 
-    max_val = 1.5e+100
-    min_val = 1.5e-100
+    max_val = 1
+    min_val = -1
     def mul(x, y):
         try:
             result = x * y
-            if math.isinf(result) or math.isnan(result):
+            if math.isnan(result):
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
@@ -109,7 +109,7 @@ def modularGP_CellaMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_P
             if y == 0:
                 return 1
             result = x / y
-            if math.isinf(result) or math.isnan(result):
+            if math.isnan(result):
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
@@ -167,11 +167,21 @@ def modularGP_CellaMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_P
     new_pset_depth1.addPrimitive(protectedDiv, 2)
     new_pset_depth1.addPrimitive(operator.neg, 1)
     
-    # create a function to replace the ARG number with the specific value (cnt_arg 0 -> 1 -> 2 -> 0)
+    def count_nodes(individual):
+        tot_nodes = 0
+        for node in individual:
+            if isinstance(node, gp.Primitive) and node.name.startswith("execTree"):
+                original_tree = pset.mapping[node.name]
+                tot_nodes += len(original_tree)
+            else:
+                tot_nodes += 1
+        return tot_nodes
+    
+    # (cnt_arg 0 -> 1 -> 0)
     def replace(_):
         nonlocal cnt_arg
         output = f"ARG{cnt_arg}"
-        cnt_arg = (cnt_arg + 1) % 3
+        cnt_arg = (cnt_arg + 1) % 2
         return output
     
     hof = [None] * N_ITERATIONS
@@ -192,10 +202,10 @@ def modularGP_CellaMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_P
             pop[random.randrange(N_POPULATION // 2, N_POPULATION)] = best_ind
         
         hof[cnt] = tools.HallOfFame(3)
-        pop, log = eaSimple_elit(pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof[cnt], verbose=False)
+        pop, log = eaSimple_elit(pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof[cnt], verbose=verbose)
         
         best_ind = hof[cnt][0]
-        print(f"(modularGP_CellaMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual: {best_ind}\n")
+        print(f"(modularGP_CellaMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual ({len(best_ind)}, {count_nodes(best_ind)} nodes): {best_ind}\n")
         
         # evaluation on training, validation and test sets
         f1_testSet = evalSet(best_ind, test_data, test_labels, "test")
@@ -225,38 +235,29 @@ def modularGP_CellaMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_P
                 gp.PrimitiveTree.from_string(individuals_to_keep[cnt][i], pset)
             )
         
-        cnt1 = cntTree
-        
         # adds to the primitives the modules to be maintained in the next interation
         for ind in individuals_to_keep[cnt]:
             depth_level = depth_tree(str(ind))
             if depth_level == 2:
                 func = gp.compile(expr=ind, pset=new_pset_depth2)
-                pset.addPrimitive(func, 4, name=f"execTree{cnt1}")
+                pset.addPrimitive(func, 4, name=f"execTree{cntTree}")
             elif depth_level == 1:
                 func = gp.compile(expr=ind, pset=new_pset_depth1)
-                pset.addPrimitive(func, 2, name=f"execTree{cnt1}")
+                pset.addPrimitive(func, 2, name=f"execTree{cntTree}")
             else:
-                print("MODULE ERROR: NOT OF DEPTH 1 OR 2")
-            cnt1 += 1
-        
-        for ind in individuals_to_keep[cnt]:
-            depth_level = depth_tree(str(ind))
-            func = gp.compile(expr=ind, pset=(new_pset_depth2 if depth_level == 2 else new_pset_depth1))
-            new_pset_depth1.addPrimitive(func, 2, name=f"execTree{cntTree}")
-            new_pset_depth2.addPrimitive(func, 4, name=f"execTree{cntTree}")
+                print("(modularGP_CellaMethod) MODULE ERROR: NOT OF DEPTH 1 OR 2") # should never happen
             cntTree += 1
     
     # save
     current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    with open(f"modularGP_CellaMethod_best_individual_{current_time}.pickle", "wb") as f:
+    with open(f"modularGP_CellaMethod_best_individual_run{const}_{current_time}.pickle", "wb") as f:
         dill.dump(best_ind, f)
-    with open(f"modularGP_CellaMethod_pset_{current_time}.pkl", "wb") as p:
+    with open(f"modularGP_CellaMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
     
-    return best_ind, None, validation_f1, f1_score, statistics
+    return best_ind, count_nodes(best_ind), validation_f1, f1_score, statistics
 
-def modularGP_StefanoMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
+def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     MIN_DEPTH = 4
 
     train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset(file_path)
@@ -268,7 +269,7 @@ def modularGP_StefanoMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N
         new_train_set = convolution(func, train_data, KERNEL_SIZE)
         new_val_set = convolution(func, val_data, KERNEL_SIZE)
         f1_validation, _, _, _ = training_rf(new_train_set, train_labels, new_val_set, val_labels)
-        num_nodes = individual.height
+        num_nodes = len(individual) #it was individual.height that is the depth
         K = 0.01
         fitness = f1_validation / (1 + K * num_nodes)
         return (fitness,)
@@ -321,12 +322,12 @@ def modularGP_StefanoMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N
 
         return individuals_to_keep
 
-    max_val = 1.5e+100
-    min_val = 1.5e-100
+    max_val = 1
+    min_val = -1
     def mul(x, y):
         try:
             result = x * y
-            if math.isinf(result) or math.isnan(result):
+            if math.isnan(result):
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
@@ -338,7 +339,7 @@ def modularGP_StefanoMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N
             if y == 0:
                 return 1
             result = x / y
-            if math.isinf(result) or math.isnan(result):
+            if math.isnan(result):
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
@@ -402,6 +403,16 @@ def modularGP_StefanoMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N
     new_pset_depth1.addPrimitive(protectedDiv, 2)
     new_pset_depth1.addPrimitive(operator.neg, 1)
 
+    def count_nodes(individual):
+        tot_nodes = 0
+        for node in individual:
+            if isinstance(node, gp.Primitive) and node.name.startswith("execTree"):
+                original_tree = pset.mapping[node.name]
+                tot_nodes += len(original_tree)
+            else:
+                tot_nodes += 1
+        return tot_nodes
+    
     hof = [None] * N_ITERATIONS
     individuals_to_keep = [None] * N_ITERATIONS
     cntTree = 0
@@ -463,7 +474,7 @@ def modularGP_StefanoMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N
             statistics.append(log)
 
         best_ind = hof[cnt][0]
-        print(f"(modularGP_StefanoMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual: {best_ind}\n")
+        print(f"(modularGP_StefanoMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual ({len(best_ind)} nodes): {best_ind}\n")
         f1_testSet = evalSet(best_ind, test_data, test_labels, "test")
         f1_valSet = evalSet(best_ind, val_data, val_labels, "validation")
         validation_f1.append(f1_valSet)
@@ -477,41 +488,32 @@ def modularGP_StefanoMethod(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N
         
         individuals_to_keep[cnt] = get_individuals_to_keep(N_IND_TO_KEEP, modules_depth1, modules_depth2)
     
-        cnt1 = cntTree
-    
-        # adds to the primitives the modules to be maintained in the next interaction
+        # adds to the primitives the modules to be maintained in the next interation
         for ind in individuals_to_keep[cnt]:
             depth_level = depth_tree(str(ind))
             if depth_level == 2:
                 func = gp.compile(expr=ind, pset=new_pset_depth2)
-                pset.addPrimitive(func, 4, name=f"execTree{cnt1}")
+                pset.addPrimitive(func, 4, name=f"execTree{cntTree}")
             elif depth_level == 1:
                 func = gp.compile(expr=ind, pset=new_pset_depth1)
-                pset.addPrimitive(func, 2, name=f"execTree{cnt1}")
+                pset.addPrimitive(func, 2, name=f"execTree{cntTree}")
             else:
-                print("(modularGP_StefanoMethod) MODULE ERROR: NOT OF DEPTH 1 OR 2")
-            cnt1 += 1
-
-        for ind in individuals_to_keep[cnt]:
-            depth_level = depth_tree(str(ind))
-            func = gp.compile(expr=ind, pset=(new_pset_depth2 if depth_level == 2 else new_pset_depth1))
-            new_pset_depth1.addPrimitive(func, 2, name=f"execTree{cntTree}")
-            new_pset_depth2.addPrimitive(func, 4, name=f"execTree{cntTree}")
+                print("(modularGP_CellaMethod) MODULE ERROR: NOT OF DEPTH 1 OR 2") # should never happen
             cntTree += 1
 
     # save
-    with open(f"modularGP_StefanoMethod_best_individual_{current_time}.pickle", "wb") as f:
+    with open(f"modularGP_StefanoMethod_best_individual_run{const}_{current_time}.pickle", "wb") as f:
         dill.dump(best_ind, f)
-    with open(f"modularGP_StefanoMethod_pset_{current_time}.pkl", "wb") as p:
+    with open(f"modularGP_StefanoMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
 
-    return best_ind, None, validation_f1, f1_score, statistics
+    return best_ind, count_nodes(best_ind), validation_f1, f1_score, statistics
 
 '''
 def classicalGP(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     pass
 '''
-def classicalGP(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION, _, __, KERNEL_SIZE, const):
+def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_POPULATION, _, __, KERNEL_SIZE, const):
     MIN_DEPTH = 4
 
     train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset(file_path)
@@ -537,12 +539,12 @@ def classicalGP(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION,
         print(f"(classicalGP) Reached {mean_f1} F1 on {type} set") 
         return mean_f1
     
-    max_val = 1.5e+100
-    min_val = 1.5e-100
+    max_val = 1
+    min_val = -1
     def mul(x, y):
         try:
             result = x * y
-            if math.isinf(result) or math.isnan(result):
+            if math.isnan(result):
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
@@ -554,7 +556,7 @@ def classicalGP(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION,
             if y == 0:
                 return 1
             result = x / y
-            if math.isinf(result) or math.isnan(result):
+            if math.isnan(result):
                 return max_val if result > 0 else min_val
             return result
         except Exception as e:
@@ -601,9 +603,9 @@ def classicalGP(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION,
     
     hof = tools.HallOfFame(1)
     pop = toolbox.population(n=N_POPULATION)
-    pop, log = eaSimple_elit(pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof, verbose=False)
+    pop, log = eaSimple_elit(pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof, verbose=verbose)
     
-    print(f"(classicalGP) Best individual: {hof[0]}\n")
+    print(f"(classicalGP) Best individual ({len(hof[0])} nodes): {hof[0]}\n")
     f1_testSet = evalSet(hof[0], test_data, test_labels, "test")
     f1_valSet = evalSet(hof[0], val_data, val_labels, "validation")
     validation_f1.append(f1_valSet)
@@ -611,9 +613,9 @@ def classicalGP(current_time, file_path, MAX_DEPTH, N_GENERATIONS, N_POPULATION,
     statistics.append(log)
     
     # save
-    with open(f"classicalGP_best_individual_{current_time}.pickle", "wb") as f:
+    with open(f"classicalGP_best_individual_run{const}_{current_time}.pickle", "wb") as f:
         dill.dump(hof[0], f)
-    with open(f"classicalGP_pset_{current_time}.pkl", "wb") as p:
+    with open(f"classicalGP_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
 
     return hof[0], len(hof[0]), validation_f1, f1_score, statistics
