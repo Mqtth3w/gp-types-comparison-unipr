@@ -7,20 +7,19 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import os
 
 def parse_results_file(filename):
     parameters = {}
     runs = []
+    overall = {}
     
     with open(filename, 'r') as f:
-        lines = f.readlines()
+        lines = [line.strip() for line in f.readlines()]
         
         if len(lines) < 2:
-            return None, None
+            return parameters, runs, overall
         
-        # Parse parameters line (second line)
-        params_line = lines[1].strip().split(';')
+        params_line = lines[1].split(';')
         parameters = {
             'n_run': params_line[0],
             'max_depth': params_line[1],
@@ -32,61 +31,122 @@ def parse_results_file(filename):
             'dataset': params_line[7]
         }
         
-        # Parse runs data
         current_run = None
-        for line in lines[2:]:
-            stripped = line.strip()
-            if stripped.startswith('run;iteration;test_f1;validation_f1'):
-                current_run = {'test_f1': [], 'validation_f1': []}
+        line_index = 2
+        
+        while line_index < len(lines):
+            line = lines[line_index]
+            
+            # start of a new run's iteration data
+            if line == "run;iteration;test_f1;validation_f1":
+                current_run = {
+                    'test_f1': [],
+                    'validation_f1': [],
+                    'avg_test_f1': None,
+                    'num_nodes_best_ind': None,
+                    'run_time_min': None
+                }
                 runs.append(current_run)
-            elif current_run is not None and ';' in stripped and not stripped.startswith('----'):
-                parts = stripped.split(';')
-                if len(parts) >= 4 and parts[0].isdigit():
-                    try:
-                        current_run['test_f1'].append(float(parts[2]))
-                        current_run['validation_f1'].append(float(parts[3]))
-                    except (ValueError, IndexError):
-                        pass
-    return parameters, runs
+                line_index += 1
+                
+                # read iteration data lines
+                while line_index < len(lines):
+                    current_line = lines[line_index]
+                    
+                    # stop at section break or summary header
+                    if current_line.startswith("--------------------") or current_line.startswith("run;avg_test_f1"):
+                        break
+                        
+                    # process valid data lines
+                    if ";" in current_line:
+                        parts = current_line.split(";")
+                        if len(parts) >= 4 and parts[0].isdigit() and parts[1].isdigit():
+                            try:
+                                current_run['test_f1'].append(float(parts[2]))
+                                current_run['validation_f1'].append(float(parts[3]))
+                            except (ValueError, IndexError):
+                                print(f"Error processing iterations, line_index {line_index}")
+                    line_index += 1
+            
+            # run summary section
+            elif line.startswith("run;avg_test_f1;num_nodes_best_ind;run_time_min"):
+                line_index += 1
+                if line_index < len(lines) and runs:
+                    parts = lines[line_index].split(";")
+                    if len(parts) >= 4:
+                        try:
+                            runs[-1]['avg_test_f1'] = float(parts[1])
+                            runs[-1]['num_nodes_best_ind'] = int(parts[2])
+                            runs[-1]['run_time_min'] = float(parts[3])
+                        except (ValueError, IndexError):
+                            print(f"Error run summary section, line_index {line_index}")
+                line_index += 1
+            
+            # Overall results section
+            elif line.startswith("F1_OVERALL_AVERAGE_OF_ALL_RUNS;OVERALL_RUNNING_TIME_MIN"):
+                line_index += 1
+                if line_index < len(lines):
+                    parts = lines[line_index].split(";")
+                    if len(parts) >= 2:
+                        try:
+                            overall['F1_OVERALL_AVERAGE_OF_ALL_RUNS'] = float(parts[0])
+                            overall['OVERALL_RUNNING_TIME_MIN'] = float(parts[1])
+                        except (ValueError, IndexError):
+                            print(f"Error overall section, line_index {line_index}")
+                break
+             
+            else:
+                line_index += 1
+                   
+    return parameters, runs, overall
 
 def load_results():
     filepath = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
     if not filepath:
         return
     
-    parameters, runs = parse_results_file(filepath)
-    if not parameters or not runs:
+    parameters, runs, overall = parse_results_file(filepath)
+    if not parameters or not runs or not overall:
         return
     
-    # Create results window
+    # results window
     results_window = tk.Toplevel(root)
     results_window.title("Analysis Results")
     results_window.geometry("1200x800")
     
-    # Create scrollable canvas
-    canvas = tk.Canvas(results_window)
-    scrollbar = ttk.Scrollbar(results_window, orient="vertical", command=canvas.yview)
-    scrollable_frame = ttk.Frame(canvas)
-    
-    scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-    
-    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-    canvas.configure(yscrollcommand=scrollbar.set)
-    
+    # create a canvas widget to make the whole UI scrollable
+    canvas = tk.Canvas(root)
     canvas.pack(side="left", fill="both", expand=True)
+    scrollbar = tk.Scrollbar(root, orient="vertical", command=canvas.yview)
     scrollbar.pack(side="right", fill="y")
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    scrollable_frame = tk.Frame(canvas)
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+    def on_frame_configure(_):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+
+    def on_mouse_wheel(event):
+        if event.delta > 0:
+            canvas.yview_scroll(-1, "units") # up
+        else:
+            canvas.yview_scroll(1, "units") # down
+
+    canvas.bind_all("<MouseWheel>", on_mouse_wheel)
+    scrollable_frame.bind("<Configure>", on_frame_configure)
     
-    # Display parameters
+    # display parameters
     params_frame = ttk.LabelFrame(scrollable_frame, text="Experiment Parameters")
     params_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
-    
+    # UPDATE FROM HERE
     row = 0
     for param, value in parameters.items():
         label_text = f"{param.replace('_', ' ').title()}: {value}"
         ttk.Label(params_frame, text=label_text).grid(row=row, column=0, sticky="w", padx=5, pady=2)
         row += 1
     
-    # Display charts
+    # display charts
     for run_idx, run_data in enumerate(runs):
         chart_frame = ttk.Frame(scrollable_frame)
         chart_frame.grid(row=run_idx+1, column=0, padx=10, pady=20, sticky="nsew")
@@ -113,13 +173,13 @@ def load_results():
 def ui():
     global root
     root = tk.Tk()
-    root.title("Result charts view")
-    root.geometry("1100x450")
+    root.title("Results Analysis")
+    root.geometry("900x150")
     
     main_frame = ttk.Frame(root)
     main_frame.pack(fill="both", expand=True)
     
-    upload_frame = ttk.LabelFrame(main_frame, text="Results Analysis")
+    upload_frame = ttk.LabelFrame(main_frame, text="Upload a results (*.txt) file to do Results Analysis. You can upload multiple files (one after the other) to compare them in parallel")
     upload_frame.pack(pady=20, padx=20, fill="x")
     
     ttk.Button(upload_frame, text="Upload Results File", command=load_results).pack(pady=15, padx=50)

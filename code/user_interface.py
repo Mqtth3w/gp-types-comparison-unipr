@@ -19,12 +19,10 @@ def upload_csv():
     file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
     if not file_path:
         return
-    if not os.path.isfile(file_path): # should never happen
-        messagebox.showerror("Error", "Select only a csv file.")
     
 def start_task(task_func, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     # params check
-    if not(file_path and os.path.isfile(file_path)):
+    if not file_path or not os.path.isfile(file_path):
         messagebox.showerror("Error", "Select a csv dataset file.")
         return
     threaded_task(run_script, task_func, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)

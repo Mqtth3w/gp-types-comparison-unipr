@@ -1,7 +1,6 @@
 # initially developed by Arianna Cella, reviewed by Francesca Stefano and afterwards by Matteo Gianvenuti
 import functools
 import datetime
-import math
 import operator
 import dill
 from deap import gp, creator, base
@@ -86,9 +85,9 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
             else:
                 break
 
-        #print("\nIndividuals to keep:")
+        #print("\n(modularGP_CellaMethod) Individuals to keep:")
         #for i in range(len(individuals_to_keep)):
-            #print(f"{i}: {individuals_to_keep[i]}")
+            #print(f"(modularGP_CellaMethod) {i}: {individuals_to_keep[i]}")
 
         return individuals_to_keep
 
@@ -265,13 +264,13 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
 
     def get_individuals_to_keep(n, modules_depth1, modules_depth2):
         '''
-        #print("Modules depth 1:")
+        #print("(modularGP_StefanoMethod) Modules depth 1:")
         for key, value in modules_depth1.items():
-            #print(f"{key}: {value}")
+            #print(f"(modularGP_StefanoMethod) {key}: {value}")
 
-        #print("Modules depth 2:")
+        #print("(modularGP_StefanoMethod) Modules depth 2:")
         for key, value in modules_depth2.items():
-            #print(f"{key}: {value}")
+            #print(f"(modularGP_StefanoMethod) {key}: {value}")
         '''
         sorted_modules_1 = dict(sorted(modules_depth1.items(), key=lambda x: x[1][0], reverse=True))
         sorted_modules_2 = dict(sorted(modules_depth2.items(), key=lambda x: x[1][0], reverse=True))
@@ -296,9 +295,9 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
         sorted_modules_fitness = dict(sorted(modules_freq.items(), key=lambda x: x[1][1], reverse=True))
         individuals_to_keep = [module for module in sorted_modules_fitness.keys() if len(module) > 1][:n]
 
-        #print("\nIndividuals to keep:")
+        #print("\n(modularGP_StefanoMethod) Individuals to keep:")
         #for i, module in enumerate(individuals_to_keep):
-            #print(f"{i}: {module}")
+            #print(f"(modularGP_StefanoMethod) {i}: {module}")
 
         return individuals_to_keep
 
