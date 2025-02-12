@@ -1,3 +1,4 @@
+# initially developed by Aeranna Cella, reviewed by Francesca Stefano and afterwards by Matteo Gianvenuti
 '''
 @author Matteo Gianvenuti https://GitHub.com/Mqtth3w
 @license GPL-3.0
@@ -13,7 +14,7 @@ def import_from_file(file_path: str):
     labels = df.iloc[:, 0].values  # first col
     return data, labels
 
-def get_dataset(file_path):
+def load_dataset(file_path):
     """Load and split dataset in training, validation, and test set."""
     data, labels = import_from_file(file_path)
     

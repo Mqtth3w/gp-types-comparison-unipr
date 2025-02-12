@@ -1,4 +1,8 @@
 # initially developed by Arianna Cella, reviewed by Francesca Stefano and afterwards by Matteo Gianvenuti
+'''
+@author Matteo Gianvenuti https://GitHub.com/Mqtth3w
+@license GPL-3.0
+'''
 import functools
 import datetime
 import operator
@@ -183,8 +187,7 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
         pop, log = eaSimple_elit(pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof[cnt], verbose=verbose)
         
         best_ind = hof[cnt][0]
-        best_ind_len = count_nodes(best_ind)
-        print(f"(modularGP_CellaMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual ({best_ind_len} nodes): {best_ind}\n")
+        print(f"(modularGP_CellaMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual: {best_ind}\n")
         
         # evaluation on training, validation and test sets
         f1_testSet = evalSet(best_ind, test_data, test_labels, "test")
@@ -233,10 +236,10 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
         dill.dump(best_ind, f)
     with open(f"modularGP_CellaMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
-    
+    best_ind_len = count_nodes(best_ind)
     return best_ind, best_ind_len, validation_f1, f1_score, statistics
 
-def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
+def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_POPULATION, N_ITERATIONS, N_IND_TO_KEEP, KERNEL_SIZE, const):
     MIN_DEPTH = 4
 
     train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset(file_path)
@@ -249,7 +252,7 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
         new_val_set = convolution(func, val_data, KERNEL_SIZE)
         f1_validation, _, _, _ = training_rf(new_train_set, train_labels, new_val_set, val_labels)
         num_nodes = len(individual) #it was individual.height that is the depth
-        K = 0.01
+        K = 1e-2
         fitness = f1_validation / (1 + K * num_nodes)
         return (fitness,)
     
@@ -293,7 +296,7 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
                 modules_freq[module][1] = 0
 
         sorted_modules_fitness = dict(sorted(modules_freq.items(), key=lambda x: x[1][1], reverse=True))
-        individuals_to_keep = [module for module in sorted_modules_fitness.keys() if len(module) > 1][:n]
+        individuals_to_keep = [module for module in sorted_modules_fitness.keys()][:n]
 
         #print("\n(modularGP_StefanoMethod) Individuals to keep:")
         #for i, module in enumerate(individuals_to_keep):
@@ -376,32 +379,37 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
     cntTree = 0
     best_ind = None
 
-    def adjust_probabilities(population, gen):
+    def adjust_probabilities(population):
         """Adjust probabilities of mutation and crossover based on population diversity or fitness stagnation."""
+        nonlocal cxpb, mutpb, prev_population
         diversity_threshold = 0.2
         fitness_improvement_threshold = 0.01
         
         fitness_values = [ind.fitness.values[0] for ind in population]
         avg_fitness = np.mean(fitness_values)
-        #max_fitness = np.max(fitness_values) # it was unused
         
-        if gen > 1:
+        if prev_population:
             prev_avg_fitness = np.mean([ind.fitness.values[0] for ind in prev_population])
             fitness_improvement = avg_fitness - prev_avg_fitness
         else:
-            fitness_improvement = fitness_improvement_threshold + 1
+            fitness_improvement = None
         
         diversity = len(set(fitness_values)) / len(fitness_values)
         
-        if diversity < diversity_threshold or fitness_improvement < fitness_improvement_threshold:
-            cxpb = 0.3 # lower crossover rate
-            mutpb = 0.3 # higher mutation rate
+        adjust_condition = (
+            diversity < diversity_threshold or
+            (fitness_improvement is not None and fitness_improvement < fitness_improvement_threshold)
+        )
+        
+        # adjust probabilities with clamping to valid ranges [0, 1]
+        if adjust_condition:
+            cxpb = max(cxpb - 0.1, 0.0) # decrease crossover
+            mutpb = min(mutpb + 0.1, 1.0) # increase mutation
         else:
-            cxpb = 0.6 # higher crossover rate
-            mutpb = 0.1 # lower mutation rate
+            cxpb = min(cxpb + 0.1, 1.0) # revert crossover
+            mutpb = max(mutpb - 0.1, 0.0) # revert mutation
         
         prev_population[:] = population
-        return cxpb, mutpb
         
     prev_population = []
 
@@ -418,26 +426,17 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
             pop[random.randrange(N_POPULATION // 2, N_POPULATION)] = best_ind
 
         hof[cnt] = tools.HallOfFame(3)
-        
-        for gen in range(N_GENERATIONS):
-            pop = varAnd(pop, toolbox, cxpb=cxpb, mutpb=mutpb)
-            invalid_ind = [ind for ind in pop if not ind.fitness.valid]
-            fitnesses = map(toolbox.evaluate, invalid_ind)
-            for ind, fit in zip(invalid_ind, fitnesses):
-                ind.fitness.values = fit
-            hof[cnt].update(pop)
-            cxpb, mutpb = adjust_probabilities(pop, gen)
-            pop = toolbox.select(pop, len(pop))
-            log = mstats.compile(pop)
-            statistics.append(log)
+        pop, log = eaSimple_elit(pop, toolbox, cxpb, mutpb, N_GENERATIONS, stats=mstats, halloffame=hof[cnt], verbose=verbose)
+
+        adjust_probabilities(pop)
 
         best_ind = hof[cnt][0]
-        best_ind_len = count_nodes(best_ind)
-        print(f"(modularGP_StefanoMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual ({best_ind_len} nodes): {best_ind}\n")
+        print(f"(modularGP_StefanoMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual: {best_ind}\n")
         f1_testSet = evalSet(best_ind, test_data, test_labels, "test")
         f1_valSet = evalSet(best_ind, val_data, val_labels, "validation")
         validation_f1.append(f1_valSet)
         f1_score.append(f1_testSet)
+        statistics.append(log)
         
         modules_depth1, modules_depth2 = get_modules_list(pop)
         #view_hist(modules_depth1, 1)
@@ -449,7 +448,7 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
     
         # adds to the primitives the modules to be maintained in the next interation
         for ind in individuals_to_keep[cnt]:
-            depth_level = depth_tree(str(ind))
+            depth_level = depth_list(str(ind))
             if depth_level == 2:
                 func = gp.compile(expr=ind, pset=new_pset_depth2)
                 pset.addPrimitive(func, 4, name=f"execTree{cntTree}")
@@ -457,7 +456,7 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
                 func = gp.compile(expr=ind, pset=new_pset_depth1)
                 pset.addPrimitive(func, 2, name=f"execTree{cntTree}")
             else:
-                print("(modularGP_CellaMethod) MODULE ERROR: NOT OF DEPTH 1 OR 2") # should never happen
+                print("(modularGP_StefanoMethod) MODULE ERROR: NOT OF DEPTH 1 OR 2") # should never happen
             cntTree += 1
 
     # save
@@ -465,7 +464,7 @@ def modularGP_StefanoMethod(current_time, file_path, _, MAX_DEPTH, N_GENERATIONS
         dill.dump(best_ind, f)
     with open(f"modularGP_StefanoMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
-
+    best_ind_len = count_nodes(best_ind)
     return best_ind, best_ind_len, validation_f1, f1_score, statistics
 
 def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_POPULATION, _, __, KERNEL_SIZE, const):
@@ -536,7 +535,7 @@ def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_PO
     pop = toolbox.population(n=N_POPULATION)
     pop, log = eaSimple_elit(pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof, verbose=verbose)
     
-    print(f"(classicalGP) Best individual ({len(hof[0])} nodes): {hof[0]}\n")
+    print(f"(classicalGP) Best individual: {hof[0]}\n")
     f1_testSet = evalSet(hof[0], test_data, test_labels, "test")
     f1_valSet = evalSet(hof[0], val_data, val_labels, "validation")
     validation_f1.append(f1_valSet)

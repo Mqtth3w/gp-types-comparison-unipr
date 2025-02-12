@@ -1,4 +1,8 @@
-# initially developed by Aeranna Cella, reviewed by Matteo Gianvenuti
+# initially developed by Aeranna Cella, reviewed by Francesca Stefano and afterwards by Matteo Gianvenuti
+'''
+@author Matteo Gianvenuti https://GitHub.com/Mqtth3w
+@license GPL-3.0
+'''
 from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -108,7 +112,7 @@ def ui():
     options = list(range(1, 101))
     selected_option_generation = tk.StringVar(param_into_frame)
     selected_option_generation.set(options[0])  # default option
-    n_generations = tk.Label(param_into_frame, text="Number of generations per run")
+    n_generations = tk.Label(param_into_frame, text="Number of generations per iter")
     n_generations_combobox = ttk.Combobox(param_into_frame, values=options, textvariable=selected_option_generation)
     n_generations.grid(row=2, column=1, padx=50, pady=10)
     n_generations_combobox.grid(row=3, column=1 , padx=50)
@@ -131,7 +135,7 @@ def ui():
     
     options = ["False", "True"]
     verbose_option = tk.StringVar(param_into_frame)
-    verbose_option.set(options[0]) # default option
+    verbose_option.set(options[1]) # default option
     verbose = tk.Label(param_into_frame, text="Verbose")
     verbose_combobox = ttk.Combobox(param_into_frame, values=options, textvariable=verbose_option)
     verbose.grid(row=2, column=3, padx=50, pady=10)

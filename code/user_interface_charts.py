@@ -2,9 +2,8 @@
 @author Matteo Gianvenuti https://GitHub.com/Mqtth3w
 @license GPL-3.0
 '''
-
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, messagebox
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -54,9 +53,9 @@ def parse_results_file(filename):
                     current_line = lines[line_index]
                     
                     # stop at section break or summary header
-                    if current_line.startswith("--------------------") or current_line.startswith("run;avg_test_f1"):
+                    if current_line.startswith("----------") or current_line.startswith("run;avg_test_f1"):
                         break
-                        
+                    
                     # process valid data lines
                     if ";" in current_line:
                         parts = current_line.split(";")
@@ -69,7 +68,7 @@ def parse_results_file(filename):
                     line_index += 1
             
             # run summary section
-            elif line.startswith("run;avg_test_f1;num_nodes_best_ind;run_time_min"):
+            elif line.startswith("run;avg_test_f1"):
                 line_index += 1
                 if line_index < len(lines) and runs:
                     parts = lines[line_index].split(";")
@@ -82,8 +81,8 @@ def parse_results_file(filename):
                             print(f"Error run summary section, line_index {line_index}")
                 line_index += 1
             
-            # Overall results section
-            elif line.startswith("F1_OVERALL_AVERAGE_OF_ALL_RUNS;OVERALL_RUNNING_TIME_MIN"):
+            # overall results section
+            elif line.startswith("F1_OVERALL"):
                 line_index += 1
                 if line_index < len(lines):
                     parts = lines[line_index].split(";")
@@ -107,6 +106,7 @@ def load_results():
     
     parameters, runs, overall = parse_results_file(filepath)
     if not parameters or not runs or not overall:
+        messagebox.showerror("Error", "Select a valid results file file.")
         return
     
     # results window
@@ -115,43 +115,45 @@ def load_results():
     results_window.geometry("1200x800")
     
     # create a canvas widget to make the whole UI scrollable
-    canvas = tk.Canvas(root)
+    canvas = tk.Canvas(results_window)
     canvas.pack(side="left", fill="both", expand=True)
-    scrollbar = tk.Scrollbar(root, orient="vertical", command=canvas.yview)
+    scrollbar = tk.Scrollbar(results_window, orient="vertical", command=canvas.yview)
     scrollbar.pack(side="right", fill="y")
     canvas.configure(yscrollcommand=scrollbar.set)
 
     scrollable_frame = tk.Frame(canvas)
     canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
 
-    def on_frame_configure(_):
-        canvas.configure(scrollregion=canvas.bbox("all"))
-
     def on_mouse_wheel(event):
-        if event.delta > 0:
-            canvas.yview_scroll(-1, "units") # up
-        else:
-            canvas.yview_scroll(1, "units") # down
+        canvas.yview_scroll(-1 * (event.delta // 120), "units")
 
     canvas.bind_all("<MouseWheel>", on_mouse_wheel)
-    scrollable_frame.bind("<Configure>", on_frame_configure)
+    scrollable_frame.bind("<Configure>", lambda _: canvas.configure(scrollregion=canvas.bbox("all")))
     
     # display parameters
-    params_frame = ttk.LabelFrame(scrollable_frame, text="Experiment Parameters")
+    params_frame = ttk.LabelFrame(scrollable_frame, text="Parameters")
     params_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
-    # UPDATE FROM HERE
+    # CHARTS
     row = 0
     for param, value in parameters.items():
         label_text = f"{param.replace('_', ' ').title()}: {value}"
         ttk.Label(params_frame, text=label_text).grid(row=row, column=0, sticky="w", padx=5, pady=2)
         row += 1
     
-    # display charts
+    # display runs
     for run_idx, run_data in enumerate(runs):
-        chart_frame = ttk.Frame(scrollable_frame)
-        chart_frame.grid(row=run_idx+1, column=0, padx=10, pady=20, sticky="nsew")
+        run_frame = ttk.LabelFrame(scrollable_frame, text=f"run {run_idx+1}")
+        run_frame.grid(row=run_idx+1, column=0, padx=10, pady=10, sticky="nsew")
         
-        fig = Figure(figsize=(10, 4), dpi=100)
+        # create two columns: left for chart, right for metrics
+        chart_frame = ttk.Frame(run_frame)
+        metrics_frame = ttk.Frame(run_frame)
+        
+        chart_frame.grid(row=0, column=0, padx=10, pady=5, sticky="nsew")
+        metrics_frame.grid(row=0, column=1, padx=10, pady=5, sticky="nsew")
+        
+        # create chart
+        fig = Figure(figsize=(8, 4), dpi=100)
         ax = fig.add_subplot(111)
         
         iterations = list(range(1, len(run_data['test_f1']) + 1))
@@ -160,15 +162,41 @@ def load_results():
         
         ax.set_xlabel("Iterations")
         ax.set_ylabel("F1 Score")
-        ax.set_title(f"Run {run_idx+1} - F1 Score Progression")
+        ax.set_title(f"F1 Score progression - run {run_idx+1}")
         ax.legend()
         ax.grid(True)
         
-        canvas = FigureCanvasTkAgg(fig, master=chart_frame)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
+        chart_canvas = FigureCanvasTkAgg(fig, master=chart_frame)
+        chart_canvas.draw()
+        chart_canvas.get_tk_widget().pack(fill="both", expand=True)
         
-        ttk.Separator(scrollable_frame).grid(row=run_idx+2, column=0, sticky="ew", pady=10)
+        # add metrics
+        metrics_data = [
+            ("Average Test F1:", f"{run_data['avg_test_f1']:.4f}"),
+            ("Run Time (min):", f"{run_data['run_time_min']:.2f}"),
+            ("Best Individual Nodes:", run_data['num_nodes_best_ind'])
+        ]
+        
+        for i, (label, value) in enumerate(metrics_data):
+            ttk.Label(metrics_frame, text=label, font=('Arial', 10, 'bold'))\
+                .grid(row=i, column=0, sticky="e", padx=5, pady=5)
+            ttk.Label(metrics_frame, text=value)\
+                .grid(row=i, column=1, sticky="w", padx=5, pady=5)
+    
+    # display overall results
+    overall_frame = ttk.LabelFrame(scrollable_frame, text="Overall Results")
+    overall_frame.grid(row=len(runs)+1, column=0, padx=10, pady=20, sticky="ew")
+    
+    overall_data = [
+        ("Overall Average F1:", f"{overall['F1_OVERALL_AVERAGE_OF_ALL_RUNS']:.4f}"),
+        ("Total Running Time (min):", f"{overall['OVERALL_RUNNING_TIME_MIN']:.2f}")
+    ]
+    
+    for i, (label, value) in enumerate(overall_data):
+        ttk.Label(overall_frame, text=label, font=('Arial', 10, 'bold'))\
+            .grid(row=i, column=0, sticky="e", padx=10, pady=5)
+        ttk.Label(overall_frame, text=value)\
+            .grid(row=i, column=1, sticky="w", padx=10, pady=5)
 
 def ui():
     global root
@@ -179,7 +207,8 @@ def ui():
     main_frame = ttk.Frame(root)
     main_frame.pack(fill="both", expand=True)
     
-    upload_frame = ttk.LabelFrame(main_frame, text="Upload a results (*.txt) file to do Results Analysis. You can upload multiple files (one after the other) to compare them in parallel")
+    upload_frame = ttk.LabelFrame(main_frame, text="Upload a results (*.txt) file to do Results Analysis. \
+                                  You can upload multiple files (one after the other) to compare them in parallel")
     upload_frame.pack(pady=20, padx=20, fill="x")
     
     ttk.Button(upload_frame, text="Upload Results File", command=load_results).pack(pady=15, padx=50)

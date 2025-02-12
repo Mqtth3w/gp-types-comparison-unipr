@@ -1,4 +1,8 @@
 # initially developed by Aeranna Cella, reviewed by Francesca Stefano and afterwards by Matteo Gianvenuti
+'''
+@author Matteo Gianvenuti https://GitHub.com/Mqtth3w
+@license GPL-3.0
+'''
 import re
 import random
 from deap import tools
