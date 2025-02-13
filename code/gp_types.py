@@ -220,6 +220,7 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
         # adds to the primitives the modules to be maintained in the next interation
         for ind in individuals_to_keep[cnt]:
             depth_level = depth_tree(str(ind))
+            print(f"depth {depth_level}, {ind.height}")
             if depth_level == 2:
                 func = gp.compile(expr=ind, pset=new_pset_depth2)
                 pset.addPrimitive(func, 4, name=f"execTree{cntTree}")
@@ -252,7 +253,7 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
         new_val_set = convolution(func, val_data, KERNEL_SIZE)
         f1_validation, _, _, _ = training_rf(new_train_set, train_labels, new_val_set, val_labels)
         num_nodes = len(individual) #it was individual.height that is the depth
-        K = 1e-2
+        K = 1e-4
         fitness = f1_validation / (1 + K * num_nodes)
         return (fitness,)
     
@@ -449,6 +450,7 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
         # adds to the primitives the modules to be maintained in the next interation
         for ind in individuals_to_keep[cnt]:
             depth_level = depth_list(str(ind))
+            print(f"depth {depth_level}, {ind.height}")
             if depth_level == 2:
                 func = gp.compile(expr=ind, pset=new_pset_depth2)
                 pset.addPrimitive(func, 4, name=f"execTree{cntTree}")

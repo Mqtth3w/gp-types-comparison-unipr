@@ -67,9 +67,16 @@ def extraction_tree(individual):
     submodules_depth2 = re.findall(regex_depth2_exec, individual)
     submodules_depth2.extend(re.findall(regex_depth2, individual))
     submodules_depth2.extend(re.findall(regex_neg2, individual))
-    for module in submodules_depth1:
+
+    # optimized check # o(n)
+    submodules_depth1_set = set(submodules_depth1) # "not in" is O(1) for a set, O(n) for a list
+    submodules_depth2 = [module for module in submodules_depth2 if module not in submodules_depth1_set]
+    '''
+    # original check # p, b <= n, then it is O(n**2)
+    for module in submodules_depth1: # O(p) with p = len(submodules_depth1)
         if module in submodules_depth2:
-            submodules_depth2.remove(module)
+            submodules_depth2.remove(module) # worst case O(b) with b = len(submodules_depth2)
+    '''
     return submodules_depth1, submodules_depth2
 
 # returns the population modules/subtrees
@@ -102,8 +109,8 @@ def get_modules_individual_tree(individual):
     modules.extend(module_depth2)
     return modules
 
-def depth_tree(string):
-    string = str(string).replace(" ","")
+def depth_tree(individual):
+    string = str(individual).replace(" ","")
     
     # regex for depth 1 submodules
     regex_depth1 = r'(?:add|sub|neg|mul|div|execTree\d+)\((?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|-?\d+,-?\d+|[-A-Za-z0-9_]+,-?\d+|[-A-Za-z0-9_]+,[A-Za-z0-9_]+)\)'
@@ -204,8 +211,8 @@ def get_modules_individual_list(individual):
     
     return module_depth1, module_depth2
 
-def depth_list(individuo):
-    adj_list = extraction_list(individuo)
+def depth_list(individual):
+    adj_list = extraction_list(individual)
     if not adj_list:
         print("Error: adj_list is empty.")
         return 0
