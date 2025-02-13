@@ -84,152 +84,58 @@ def get_modules_tree(pop):
     my_dict1 = {}
     my_dict2 = {}
     for individual in pop:
-        module_depth1, module_depth2 = extraction_tree(str(individual)) 
-
+        module_depth1, module_depth2 = extraction_tree(individual) 
+        fit = individual.fitness.values[0]
         for m in module_depth1:
             if m not in my_dict1:
-                my_dict1[m] = [1, individual.fitness.values[0]]
+                my_dict1[m] = [1, fit]
             else:
                 my_dict1[m][0] += 1
-                my_dict1[m][1] += individual.fitness.values[0]
+                my_dict1[m][1] += fit
 
         for m in module_depth2:
             if m not in my_dict2:
-                my_dict2[m] = [1, individual.fitness.values[0]]
+                my_dict2[m] = [1, fit]
             else:
                 my_dict2[m][0] += 1
-                my_dict2[m][1] += individual.fitness.values[0]
+                my_dict2[m][1] += fit
 
-    return my_dict1, my_dict2 
-
-def get_modules_individual_tree(individual):
-    modules = []
-    module_depth1, module_depth2 = extraction_tree(individual)
-    modules.extend(module_depth1)
-    modules.extend(module_depth2)
-    return modules
-
-def depth_tree(individual):
-    string = str(individual).replace(" ","")
-    
-    # regex for depth 1 submodules
-    regex_depth1 = r'(?:add|sub|neg|mul|div|execTree\d+)\((?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|-?\d+,-?\d+|[-A-Za-z0-9_]+,-?\d+|[-A-Za-z0-9_]+,[A-Za-z0-9_]+)\)'
-    regex_execTree_depth1 = r'execTree\d+\((?:-?\d+|ARG\d+|[A-Za-z0-9_]+)(?:,-?\d+|,ARG\d+|,[A-Za-z0-9_]+){0,3}\)'
-
-    # regex for depth 2 submodules
-    regex_depth2 = r'(?:sub|add|mul|div|execTree\d+)\((?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_depth1+r'|'+regex_execTree_depth1+r')\,(?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_depth1+r'|'+regex_execTree_depth1+r')\)'
-    regex_neg2 = r'(?:neg)\((?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_depth1+r'|'+regex_execTree_depth1+r')\)'
-    regex_depth2_exec = r'(?:execTree\d+)\((?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_execTree_depth1+r'|'+regex_depth1+r')\,(?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_execTree_depth1+r'|'+regex_depth1+r')\,(?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_execTree_depth1+r'|'+regex_depth1+r')\,(?:-?\d+|[A-Za-z0-9_]+|\([^()]+\)|'+regex_execTree_depth1+r'|'+regex_depth1+r')\)'
-
-    if re.match(regex_depth1, string) or re.match(regex_execTree_depth1, string):
-        return 1
-    if re.match(regex_depth2, string) or re.match(regex_neg2, string) or re.match(regex_depth2_exec, string):
-        return 2
-    
-    return None
+    return my_dict1, my_dict2
 
 def extraction_list(individual):
-    individual = str(individual).replace(" ", "")
-    
-    def parse_expression(expression):
-        stack = []
-        adj_list = {}
-        current_node = None
-        
-        i = 0
-        while i < len(expression):
-            if expression[i].isalpha():
-                j = i
-                while j < len(expression) and (expression[j].isalpha() or expression[j].isdigit() or expression[j] == '_'):
-                    j += 1
-                node = expression[i:j]
-                i = j
-                if current_node is None:
-                    current_node = node
-                    adj_list[current_node] = []
-                else:
-                    stack.append(current_node)
-                    current_node = node
-                    adj_list[current_node] = []
-            elif expression[i].isdigit() or expression[i] == '-':
-                j = i
-                while j < len(expression) and (expression[j].isdigit() or expression[j] == '-'):
-                    j += 1
-                node = expression[i:j]
-                i = j
-                adj_list[current_node].append(node)
-            elif expression[i] == ',':
-                i += 1
-            elif expression[i] == ')':
-                if stack:
-                    parent_node = stack.pop()
-                    adj_list[parent_node].append(current_node)
-                    current_node = parent_node
-                i += 1
-            elif expression[i] == '(':
-                i += 1
-        #print("Adjacency list: ", adj_list)
-        return adj_list
-    
-    return parse_expression(individual)
+    pass
 
 def get_modules_list(pop):
     my_dict1 = {}
     my_dict2 = {}
     
     for p in pop:
-        adj_list = extraction_list(str(p))
+        adj_list = extraction_list(p)
+        fit = p.fitness.values[0]
         
         for node in adj_list:
             children = adj_list[node]
+            
             if len(children) == 1:
                 if node not in my_dict1:
-                    my_dict1[node] = [1, p.fitness.values[0]]
+                    my_dict1[node] = [1, fit]
                 else:
                     my_dict1[node][0] += 1
-                    my_dict1[node][1] += p.fitness.values[0]
+                    my_dict1[node][1] += fit
             elif len(children) > 1:
                 if node not in my_dict2:
-                    my_dict2[node] = [1, p.fitness.values[0]]
+                    my_dict2[node] = [1, fit]
                 else:
                     my_dict2[node][0] += 1
-                    my_dict2[node][1] += p.fitness.values[0]
+                    my_dict2[node][1] += fit
 
     return my_dict1, my_dict2
-
-def get_modules_individual_list(individual):
-    adj_list = extraction_list(individual)
-    module_depth1 = []
-    module_depth2 = []
-    
-    for node in adj_list:
-        children = adj_list[node]
-        if len(children) == 1:
-            module_depth1.append(node)
-        elif len(children) > 1:
-            module_depth2.append(node)
-    
-    return module_depth1, module_depth2
-
-def depth_list(individual):
-    adj_list = extraction_list(individual)
-    if not adj_list:
-        print("Error: adj_list is empty.")
-        return 0
-    
-    def max_depth(node):
-        if node not in adj_list or not adj_list[node]:
-            return 1
-        else:
-            return 1 + max(max_depth(child) for child in adj_list[node])
-    
-    return max(max_depth(node) for node in adj_list)
 
 def view_hist(module_freq, depth):
     plt.subplots(figsize=(8, 6))
     keys = list(module_freq.keys())
     values = [module_freq[key][0] for key in keys]
-    plt.bar(keys,values)
+    plt.bar(keys, values)
     plt.xlabel('Modules')
     plt.xticks(fontsize=8)
     plt.xticks(rotation=90)  

@@ -105,7 +105,6 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
     pset.addPrimitive(protectedDiv, 2)
     pset.addPrimitive(operator.neg, 1)
     pset.addEphemeralConstant(f"rand101_{const}", functools.partial(random.randint, -1, 1))
-    #pset.addEphemeralConstant(f"rand101_{const}", lambda: random.randint(-1, 1)) # lambda is anonym and cannot be serialized by pickle
 
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
     creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
@@ -219,15 +218,13 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
         
         # adds to the primitives the modules to be maintained in the next interation
         for ind in individuals_to_keep[cnt]:
-            depth_level = depth_tree(str(ind))
-            print(f"depth {depth_level}, {ind.height}")
-            if depth_level == 2:
+            if ind.height == 2:
                 func = gp.compile(expr=ind, pset=new_pset_depth2)
                 pset.addPrimitive(func, 4, name=f"execTree{cntTree}")
-            elif depth_level == 1:
+            elif ind.height == 1:
                 func = gp.compile(expr=ind, pset=new_pset_depth1)
                 pset.addPrimitive(func, 2, name=f"execTree{cntTree}")
-            else:
+            else: # it means the module is a terminal
                 print("(modularGP_CellaMethod) MODULE ERROR: NOT OF DEPTH 1 OR 2") # should never happen
             cntTree += 1
     
@@ -315,7 +312,6 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
     pset.addPrimitive(protectedDiv, 2)
     pset.addPrimitive(operator.neg, 1)
     pset.addEphemeralConstant(f"rand101_{const}", functools.partial(random.randint, -1, 1))
-    #pset.addEphemeralConstant(f"rand101_{const}", lambda: random.randint(-1, 1))
 
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
     creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
@@ -449,15 +445,13 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
     
         # adds to the primitives the modules to be maintained in the next interation
         for ind in individuals_to_keep[cnt]:
-            depth_level = depth_list(str(ind))
-            print(f"depth {depth_level}, {ind.height}")
-            if depth_level == 2:
+            if ind.height == 2:
                 func = gp.compile(expr=ind, pset=new_pset_depth2)
                 pset.addPrimitive(func, 4, name=f"execTree{cntTree}")
-            elif depth_level == 1:
+            elif ind.height == 1:
                 func = gp.compile(expr=ind, pset=new_pset_depth1)
                 pset.addPrimitive(func, 2, name=f"execTree{cntTree}")
-            else:
+            else: # it means the module is a terminal
                 print("(modularGP_StefanoMethod) MODULE ERROR: NOT OF DEPTH 1 OR 2") # should never happen
             cntTree += 1
 
