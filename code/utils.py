@@ -68,14 +68,14 @@ def extraction_tree(individual):
     submodules_depth2.extend(re.findall(regex_depth2, individual))
     submodules_depth2.extend(re.findall(regex_neg2, individual))
 
-    # optimized check # o(n)
-    submodules_depth1_set = set(submodules_depth1) # "not in" is O(1) for a set, O(n) for a list
+    # optimized check # O(n)
+    submodules_depth1_set = set(submodules_depth1) # "not in"/"in" is O(1) for a set, O(n) for a list
     submodules_depth2 = [module for module in submodules_depth2 if module not in submodules_depth1_set]
     '''
-    # original check # p, b <= n, then it is O(n**2)
+    # original check # p, b <= n, then it is O(n**3)
     for module in submodules_depth1: # O(p) with p = len(submodules_depth1)
-        if module in submodules_depth2:
-            submodules_depth2.remove(module) # worst case O(b) with b = len(submodules_depth2)
+        if module in submodules_depth2: #  worst case O(b) with b = len(submodules_depth2)
+            submodules_depth2.remove(module) # worst case O(b) 
     '''
     return submodules_depth1, submodules_depth2
 
