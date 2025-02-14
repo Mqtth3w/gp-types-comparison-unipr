@@ -79,7 +79,7 @@ def ui():
     root.title("GP types comparison")
     root.geometry("1100x450") #WxH
 
-    frame=tk.Frame(root)
+    frame = tk.Frame(root)
     frame.pack(fill="both", expand=True)
 
     param_into_frame = tk.LabelFrame(frame, text="Insert parameters")

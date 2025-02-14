@@ -95,14 +95,14 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
 
         return individuals_to_keep
 
-    def protectedDiv(x, y):
+    def div(x, y):
         return 1 if y == 0 else x / y
     
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
     pset.addPrimitive(operator.add, 2)
     pset.addPrimitive(operator.sub, 2)
     pset.addPrimitive(operator.mul, 2)
-    pset.addPrimitive(protectedDiv, 2)
+    pset.addPrimitive(div, 2)
     pset.addPrimitive(operator.neg, 1)
     pset.addEphemeralConstant(f"rand101_{const}", functools.partial(random.randint, -1, 1))
 
@@ -138,14 +138,14 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
     new_pset_depth2.addPrimitive(operator.add, 2)
     new_pset_depth2.addPrimitive(operator.sub, 2)
     new_pset_depth2.addPrimitive(operator.mul, 2)
-    new_pset_depth2.addPrimitive(protectedDiv, 2)
+    new_pset_depth2.addPrimitive(div, 2)
     new_pset_depth2.addPrimitive(operator.neg, 1)
 
     new_pset_depth1 = gp.PrimitiveSet("MAIN", 2) 
     new_pset_depth1.addPrimitive(operator.add, 2)
     new_pset_depth1.addPrimitive(operator.sub, 2)
     new_pset_depth1.addPrimitive(operator.mul, 2)
-    new_pset_depth1.addPrimitive(protectedDiv, 2)
+    new_pset_depth1.addPrimitive(div, 2)
     new_pset_depth1.addPrimitive(operator.neg, 1)
     
     def count_nodes(individual):
@@ -168,7 +168,6 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
     hof = [None] * N_ITERATIONS
     individuals_to_keep = [None] * N_ITERATIONS
     cntTree = 0
-    cnt_arg = 0
     best_ind = None
     
     for cnt in range(N_ITERATIONS):
@@ -195,7 +194,7 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
         f1_score.append(f1_testSet)
         statistics.append(log)
         
-        modules_depth1, modules_depth2 = get_modules_tree(pop)
+        modules_depth1, modules_depth2 = get_modules(pop, extraction_tree)
         
         # frequency charts
         #view_hist(modules_depth1, 1)
@@ -208,7 +207,7 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
         for i in range(len(individuals_to_keep[cnt])):
             individuals_to_keep[cnt][i] = re.sub(r'ARG\d+', replace, individuals_to_keep[cnt][i])
         
-        individuals_to_keep[cnt] = list(set(individuals_to_keep[cnt]))
+        #individuals_to_keep[cnt] = list(set(individuals_to_keep[cnt]))
         
         # transformation of strings into individuals
         for i in range(len(individuals_to_keep[cnt])):
@@ -265,13 +264,13 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
 
     def get_individuals_to_keep(n, modules_depth1, modules_depth2):
         '''
-        #print("(modularGP_StefanoMethod) Modules depth 1:")
+        print("(modularGP_StefanoMethod) Modules depth 1:")
         for key, value in modules_depth1.items():
-            #print(f"(modularGP_StefanoMethod) {key}: {value}")
+            print(f"(modularGP_StefanoMethod) {key}: {value}")
 
-        #print("(modularGP_StefanoMethod) Modules depth 2:")
+        print("(modularGP_StefanoMethod) Modules depth 2:")
         for key, value in modules_depth2.items():
-            #print(f"(modularGP_StefanoMethod) {key}: {value}")
+            print(f"(modularGP_StefanoMethod) {key}: {value}")
         '''
         sorted_modules_1 = dict(sorted(modules_depth1.items(), key=lambda x: x[1][0], reverse=True))
         sorted_modules_2 = dict(sorted(modules_depth2.items(), key=lambda x: x[1][0], reverse=True))
@@ -295,21 +294,21 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
 
         sorted_modules_fitness = dict(sorted(modules_freq.items(), key=lambda x: x[1][1], reverse=True))
         individuals_to_keep = [module for module in sorted_modules_fitness.keys()][:n]
-
-        #print("\n(modularGP_StefanoMethod) Individuals to keep:")
-        #for i, module in enumerate(individuals_to_keep):
-            #print(f"(modularGP_StefanoMethod) {i}: {module}")
-
+        '''
+        print("\n(modularGP_StefanoMethod) Individuals to keep:")
+        for i, module in enumerate(individuals_to_keep):
+            print(f"(modularGP_StefanoMethod) {i}: {module}")
+        '''
         return individuals_to_keep
 
-    def protectedDiv(x, y):
+    def div(x, y):
         return 1 if y == 0 else x / y
 
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
     pset.addPrimitive(operator.add, 2)
     pset.addPrimitive(operator.sub, 2)
     pset.addPrimitive(operator.mul, 2)
-    pset.addPrimitive(protectedDiv, 2)
+    pset.addPrimitive(div, 2)
     pset.addPrimitive(operator.neg, 1)
     pset.addEphemeralConstant(f"rand101_{const}", functools.partial(random.randint, -1, 1))
 
@@ -351,14 +350,14 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
     new_pset_depth2.addPrimitive(operator.add, 2)
     new_pset_depth2.addPrimitive(operator.sub, 2)
     new_pset_depth2.addPrimitive(operator.mul, 2)
-    new_pset_depth2.addPrimitive(protectedDiv, 2)
+    new_pset_depth2.addPrimitive(div, 2)
     new_pset_depth2.addPrimitive(operator.neg, 1)
 
     new_pset_depth1 = gp.PrimitiveSet("MAIN", 2)
     new_pset_depth1.addPrimitive(operator.add, 2)
     new_pset_depth1.addPrimitive(operator.sub, 2)
     new_pset_depth1.addPrimitive(operator.mul, 2)
-    new_pset_depth1.addPrimitive(protectedDiv, 2)
+    new_pset_depth1.addPrimitive(div, 2)
     new_pset_depth1.addPrimitive(operator.neg, 1)
 
     def count_nodes(individual):
@@ -370,6 +369,12 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
             else:
                 tot_nodes += 1
         return tot_nodes
+    
+    def replace(_):
+        nonlocal cnt_arg
+        output = f"ARG{cnt_arg}"
+        cnt_arg = (cnt_arg + 1) % 2
+        return output
     
     hof = [None] * N_ITERATIONS
     individuals_to_keep = [None] * N_ITERATIONS
@@ -435,14 +440,26 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
         f1_score.append(f1_testSet)
         statistics.append(log)
         
-        modules_depth1, modules_depth2 = get_modules_list(pop)
+        modules_depth1, modules_depth2 = get_modules(pop, extraction_list)
         #view_hist(modules_depth1, 1)
         #view_hist(modules_depth2, 2)
         #view_hist_fitness_freq(modules_depth1)
         #view_hist_fitness_freq(modules_depth2)
         
         individuals_to_keep[cnt] = get_individuals_to_keep(N_IND_TO_KEEP, modules_depth1, modules_depth2)
-    
+
+        cnt_arg = 0
+        for i in range(len(individuals_to_keep[cnt])):
+            individuals_to_keep[cnt][i] = re.sub(r'ARG\d+', replace, individuals_to_keep[cnt][i])
+        
+        individuals_to_keep[cnt] = list(set(individuals_to_keep[cnt]))
+        
+        # transformation of strings into individuals
+        for i in range(len(individuals_to_keep[cnt])):
+            individuals_to_keep[cnt][i] = creator.Individual(
+                gp.PrimitiveTree.from_string(individuals_to_keep[cnt][i], pset)
+            )
+        
         # adds to the primitives the modules to be maintained in the next interation
         for ind in individuals_to_keep[cnt]:
             if ind.height == 2:
@@ -545,8 +562,6 @@ def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_PO
         dill.dump(pset, p)
 
     return hof[0], len(hof[0]), validation_f1, f1_score, statistics
-
-
 
 
 ''' # check the doc for more details

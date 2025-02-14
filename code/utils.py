@@ -48,7 +48,7 @@ def training_rf(X_data, X_labels, Y_data, Y_labels):
 
     return mean_f1, Y_labels_multi, y_predictions, rf
 
-def extraction_tree(individual):
+def extraction_tree(individual): # O(n)
     individual = str(individual).replace(" ","")
 
     # regex for depth 1 submodules
@@ -68,9 +68,14 @@ def extraction_tree(individual):
     submodules_depth2.extend(re.findall(regex_depth2, individual))
     submodules_depth2.extend(re.findall(regex_neg2, individual))
 
+    ''' # another optimized way to do it. It is always O(n)
+    submodules_depth1 = list(set(submodules_depth1)) # set conversion O(n)
+    submodules_depth2 = list(set(submodules_depth2) - set(submodules_depth1))
+    '''
     # optimized check # O(n)
     submodules_depth1_set = set(submodules_depth1) # "not in"/"in" is O(1) for a set, O(n) for a list
     submodules_depth2 = [module for module in submodules_depth2 if module not in submodules_depth1_set]
+    
     '''
     # original check # p, b <= n, then it is O(n**3)
     for module in submodules_depth1: # O(p) with p = len(submodules_depth1)
@@ -79,12 +84,83 @@ def extraction_tree(individual):
     '''
     return submodules_depth1, submodules_depth2
 
+def extraction_list(individual): # O(n), everything is bounded by O(n) here
+    ind = str(individual).replace(" ", "") # O(n)
+    tree, _ = parse_expr(ind, 0) # O(n)
+    submodules_depth1, submodules_depth2 = extract_nodes(tree, is_root=True) # O(n)
+    
+    d1_set = set(submodules_depth1) # O(n)
+    submodules_depth2 = [mod for mod in submodules_depth2 if mod not in d1_set] # O(n)
+
+    #print(f"ind: {ind}")
+    #print(f"dp1: {submodules_depth1}")
+    #print(f"dp2: {submodules_depth2}")
+
+    return submodules_depth1, submodules_depth2
+
+# extraction_list support
+def parse_expr(ind, i): # O(n)
+    j = i
+    if ind[j] == '-':
+        j += 1
+    while j < len(ind) and (ind[j].isalnum() or ind[j] == '_'): # scan the ind O(n) shared
+        j += 1
+    token = ind[i:j]
+    # shared mean they altogether have O(n) bc they iter the same object
+    if j < len(ind) and ind[j] == "(":
+        j += 1
+        args = []
+        while ind[j] != ")": # scan the ind O(n) shared
+            arg, j = parse_expr(ind, j)
+            args.append(arg)
+            if ind[j] == ",":
+                j += 1
+        j += 1
+        return (token, args), j
+    return token, j
+
+# extraction_list support
+def is_operator(op): # O(1)
+    return op in {"add", "sub", "neg", "mul", "div"} or (op.startswith("execTree") and op[8:].isdigit())
+
+# extraction_list support
+def is_flat(node): # O(k) with k the number of node args
+    if not isinstance(node, tuple):
+        return True
+    _, args = node
+    return all(not (isinstance(arg, tuple) and is_operator(arg[0])) for arg in args)
+
+# extraction_list support
+def node_to_str(node): # O(m) with m number of node characters
+    if not isinstance(node, tuple):
+        return node
+    op, args = node
+    return op + "(" + ",".join(node_to_str(arg) for arg in args) + ")"
+
+# extraction_list support
+def extract_nodes(node, is_root=False): # O(b) with b the number of nodes
+    d1, d2 = [], []
+    if isinstance(node, tuple):
+        op, args = node
+        if not is_root and is_operator(op):
+            if is_flat(node):
+                d1.append(node_to_str(node))
+            else:
+                d2.append(node_to_str(node))
+        # scan all the nodes O(b)
+        for arg in args:
+            if isinstance(arg, tuple):
+                a1, a2 = extract_nodes(arg, False)
+                d1.extend(a1)
+                d2.extend(a2)
+    return d1, d2
+
 # returns the population modules/subtrees
-def get_modules_tree(pop):
+def get_modules(pop, extraction):
     my_dict1 = {}
     my_dict2 = {}
     for individual in pop:
-        module_depth1, module_depth2 = extraction_tree(individual) 
+        module_depth1, module_depth2 = extraction(individual) # extraction_tree or extraction_list
         fit = individual.fitness.values[0]
         for m in module_depth1:
             if m not in my_dict1:
@@ -99,35 +175,6 @@ def get_modules_tree(pop):
             else:
                 my_dict2[m][0] += 1
                 my_dict2[m][1] += fit
-
-    return my_dict1, my_dict2
-
-def extraction_list(individual):
-    pass
-
-def get_modules_list(pop):
-    my_dict1 = {}
-    my_dict2 = {}
-    
-    for p in pop:
-        adj_list = extraction_list(p)
-        fit = p.fitness.values[0]
-        
-        for node in adj_list:
-            children = adj_list[node]
-            
-            if len(children) == 1:
-                if node not in my_dict1:
-                    my_dict1[node] = [1, fit]
-                else:
-                    my_dict1[node][0] += 1
-                    my_dict1[node][1] += fit
-            elif len(children) > 1:
-                if node not in my_dict2:
-                    my_dict2[node] = [1, fit]
-                else:
-                    my_dict2[node][0] += 1
-                    my_dict2[node][1] += fit
 
     return my_dict1, my_dict2
 
