@@ -41,8 +41,8 @@ def run_script(method_func, file_path, verbose, n_run, max_depth, generations, p
     print(f"({method_func.__name__}) outfile {filename}")
     # run the script n times and save the results to a file
     with open(filename, "w") as results_file0:
-        results_file0.write("runs;max_depth;generations;population_size;iterations;individuals_to_keep;kernel_size;dataset\n")
-        results_file0.write(f"{n_run}:{max_depth};{generations};{pop_size};{iterations};{inds_to_keep};{kernel_size};{file_path}\n")
+        results_file0.write("runs;max_depth;generations;population_size;iterations;individuals_to_keep;kernel_size;method;dataset\n")
+        results_file0.write(f"{n_run}:{max_depth};{generations};{pop_size};{iterations};{inds_to_keep};{kernel_size};{method_func.__name__};{file_path}\n")
     for i in range(n_run):
         print(f"({method_func.__name__}) Run {i} starting...")
         run_start = datetime.datetime.now().timestamp()
@@ -76,7 +76,7 @@ def run_script(method_func, file_path, verbose, n_run, max_depth, generations, p
 
 def ui():
     root = tk.Tk()
-    root.title("GP types comparsion")
+    root.title("GP types comparison")
     root.geometry("1100x450") #WxH
 
     frame=tk.Frame(root)

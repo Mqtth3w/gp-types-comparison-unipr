@@ -27,7 +27,8 @@ def parse_results_file(filename):
             'iterations': params_line[4],
             'individuals_to_keep': params_line[5],
             'kernel_size': params_line[6],
-            'dataset': params_line[7]
+            'method': params_line[7],
+            'dataset': params_line[8]
         }
         
         current_run = None
@@ -111,7 +112,7 @@ def load_results():
     
     # results window
     results_window = tk.Toplevel(root)
-    results_window.title("Analysis Results")
+    results_window.title(f"Results Analysis {parameters['method']}")
     results_window.geometry("1200x800")
     
     # create a canvas widget to make the whole UI scrollable
