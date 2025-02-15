@@ -6,6 +6,7 @@
 import functools
 import operator
 import dill
+import pickle
 from deap import gp, creator, base
 from utils import *
 from data_loader import load_dataset
@@ -218,9 +219,11 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
             if ind.height == 2:
                 func = gp.compile(expr=ind, pset=new_pset_depth2)
                 pset.addPrimitive(func, 4, name=f"execTree{cntTree}")
+                new_pset_depth2.addPrimitive(func, 4, name=f"execTree{cntTree}")
             elif ind.height == 1:
                 func = gp.compile(expr=ind, pset=new_pset_depth1)
                 pset.addPrimitive(func, 2, name=f"execTree{cntTree}")
+                new_pset_depth1.addPrimitive(func, 2, name=f"execTree{cntTree}")
             else: # it means the module is a terminal
                 print("(modularGP_CellaMethod) MODULE ERROR: NOT OF DEPTH 1 OR 2") # should never happen
             cntTree += 1
@@ -228,7 +231,7 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
     # save
     script_dir = os.path.dirname(os.path.realpath(__file__))
     with open(f"{script_dir}/modularGP_CellaMethod_best_individual_run{const}_{current_time}.pickle", "wb") as f:
-        dill.dump(best_ind, f)
+        pickle.dump(best_ind, f)
     with open(f"{script_dir}/modularGP_CellaMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
     best_ind_len = count_nodes(best_ind)
@@ -460,13 +463,15 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
         
         # adds to the primitives the modules to be maintained in the next interation
         for ind in individuals_to_keep[cnt]:
-            print(f"indkeep: {ind}")
+            #print(f"indkeep: {ind}")
             if ind.height == 2:
                 func = gp.compile(expr=ind, pset=new_pset_depth2)
                 pset.addPrimitive(func, 4, name=f"execTree{cntTree}")
+                new_pset_depth2.addPrimitive(func, 4, name=f"execTree{cntTree}")
             elif ind.height == 1:
                 func = gp.compile(expr=ind, pset=new_pset_depth1)
                 pset.addPrimitive(func, 2, name=f"execTree{cntTree}")
+                new_pset_depth1.addPrimitive(func, 2, name=f"execTree{cntTree}")
             else: # it means the module is a terminal
                 print("(modularGP_StefanoMethod) MODULE ERROR: NOT OF DEPTH 1 OR 2") # should never happen
             cntTree += 1
@@ -474,7 +479,7 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
     # save
     script_dir = os.path.dirname(os.path.realpath(__file__))
     with open(f"{script_dir}/modularGP_StefanoMethod_best_individual_run{const}_{current_time}.pickle", "wb") as f:
-        dill.dump(best_ind, f)
+        pickle.dump(best_ind, f)
     with open(f"{script_dir}/modularGP_StefanoMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
     best_ind_len = count_nodes(best_ind)
@@ -558,7 +563,7 @@ def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_PO
     # save
     script_dir = os.path.dirname(os.path.realpath(__file__))
     with open(f"{script_dir}/classicalGP_best_individual_{current_time}.pickle", "wb") as f:
-        dill.dump(hof[0], f)
+        pickle.dump(hof[0], f)
     with open(f"{script_dir}/classicalGP_pset_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
 

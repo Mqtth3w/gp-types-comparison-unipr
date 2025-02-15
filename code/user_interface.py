@@ -32,7 +32,7 @@ def start_task(task_func, verbose, n_run, max_depth, generations, pop_size, iter
 
 def run_script(method_func, file_path, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     avg_f1 = []
-    current_time = datetime.datetime.now()
+    current_time = datetime.now()
     start = current_time.timestamp()
     current_time = current_time.strftime("%Y-%m-%d_%H-%M-%S")
     script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -48,9 +48,9 @@ def run_script(method_func, file_path, verbose, n_run, max_depth, generations, p
         results_file0.write(f"{n_run}:{max_depth};{generations};{pop_size};{iterations};{inds_to_keep};{kernel_size};{method_func.__name__};{file_path}\n")
     for i in range(n_run):
         print(f"({method_func.__name__}) Run {i} starting...")
-        run_start = datetime.datetime.now().timestamp()
+        run_start = datetime.now().timestamp()
         _, num_nodes, f1_validation, f1_test, _ = method_func(current_time, file_path, verbose, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size, i)
-        run_end = datetime.datetime.now().timestamp()
+        run_end = datetime.now().timestamp()
         print(f"({method_func.__name__}) Run {i} completed, run time {(run_end - run_start) / 60} minutes")
         
         # save results
@@ -68,7 +68,7 @@ def run_script(method_func, file_path, verbose, n_run, max_depth, generations, p
             results_file.write("\n--------------------\n")
             results_file.write(f"run;avg_test_f1;num_nodes_best_ind;run_time_min\n{i};{avg};{num_nodes};{(run_end - run_start) / 60}\n")
 
-    end = datetime.datetime.now().timestamp()
+    end = datetime.now().timestamp()
     # final result given as the average of all f1s of the various runs carried out
     avg = sum(map(float, avg_f1)) / n_run #len(avg_f1)
     with open(filename, "a") as results_file2:
