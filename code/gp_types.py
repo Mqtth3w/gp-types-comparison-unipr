@@ -4,14 +4,12 @@
 @license GPL-3.0
 '''
 import functools
-import datetime
 import operator
 import dill
 from deap import gp, creator, base
 from utils import *
 from data_loader import load_dataset
-import matplotlib
-matplotlib.use('TkAgg')
+import os
 #import pathos.multiprocessing as multiprocessing
 #from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
@@ -228,10 +226,10 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
             cntTree += 1
     
     # save
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    with open(f"modularGP_CellaMethod_best_individual_run{const}_{current_time}.pickle", "wb") as f:
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    with open(f"{script_dir}/modularGP_CellaMethod_best_individual_run{const}_{current_time}.pickle", "wb") as f:
         dill.dump(best_ind, f)
-    with open(f"modularGP_CellaMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
+    with open(f"{script_dir}/modularGP_CellaMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
     best_ind_len = count_nodes(best_ind)
     return best_ind, best_ind_len, validation_f1, f1_score, statistics
@@ -462,6 +460,7 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
         
         # adds to the primitives the modules to be maintained in the next interation
         for ind in individuals_to_keep[cnt]:
+            print(f"indkeep: {ind}")
             if ind.height == 2:
                 func = gp.compile(expr=ind, pset=new_pset_depth2)
                 pset.addPrimitive(func, 4, name=f"execTree{cntTree}")
@@ -473,9 +472,10 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
             cntTree += 1
 
     # save
-    with open(f"modularGP_StefanoMethod_best_individual_run{const}_{current_time}.pickle", "wb") as f:
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    with open(f"{script_dir}/modularGP_StefanoMethod_best_individual_run{const}_{current_time}.pickle", "wb") as f:
         dill.dump(best_ind, f)
-    with open(f"modularGP_StefanoMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
+    with open(f"{script_dir}/modularGP_StefanoMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
     best_ind_len = count_nodes(best_ind)
     return best_ind, best_ind_len, validation_f1, f1_score, statistics
@@ -556,9 +556,10 @@ def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_PO
     statistics.append(log)
     
     # save
-    with open(f"classicalGP_best_individual_run{const}_{current_time}.pickle", "wb") as f:
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    with open(f"{script_dir}/classicalGP_best_individual_{current_time}.pickle", "wb") as f:
         dill.dump(hof[0], f)
-    with open(f"classicalGP_pset_run{const}_{current_time}.pkl", "wb") as p:
+    with open(f"{script_dir}/classicalGP_pset_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
 
     return hof[0], len(hof[0]), validation_f1, f1_score, statistics

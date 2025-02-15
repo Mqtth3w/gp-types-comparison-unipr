@@ -6,7 +6,6 @@
 from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import os
 import multiprocessing
 from gp_types import *
 
@@ -39,6 +38,10 @@ def run_script(method_func, file_path, verbose, n_run, max_depth, generations, p
     script_dir = os.path.dirname(os.path.realpath(__file__))
     filename = f"{script_dir}/{method_func.__name__}_results_{current_time}.txt"
     print(f"({method_func.__name__}) outfile {filename}")
+    if method_func.__name__ == "classicalGP":
+        n_run = 1
+        iterations = 1
+        inds_to_keep = 0
     # run the script n times and save the results to a file
     with open(filename, "w") as results_file0:
         results_file0.write("runs;max_depth;generations;population_size;iterations;individuals_to_keep;kernel_size;method;dataset\n")

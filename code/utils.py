@@ -8,6 +8,8 @@ import random
 from deap import tools
 from deap.algorithms import varAnd
 from matplotlib import pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')
 import numpy as np
 from sklearn.calibration import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
@@ -68,7 +70,7 @@ def extraction_tree(individual): # O(n)
     submodules_depth2.extend(re.findall(regex_depth2, individual))
     submodules_depth2.extend(re.findall(regex_neg2, individual))
 
-    ''' # another optimized way to do it. It is always O(n)
+    ''' # another optimized way to do it. It is always O(n), but it remove duplicates 
     submodules_depth1 = list(set(submodules_depth1)) # set conversion O(n)
     submodules_depth2 = list(set(submodules_depth2) - set(submodules_depth1))
     '''
@@ -82,19 +84,25 @@ def extraction_tree(individual): # O(n)
         if module in submodules_depth2: #  worst case O(b) with b = len(submodules_depth2)
             submodules_depth2.remove(module) # worst case O(b) 
     '''
+
+    print(f"ind: {individual}")
+    print(f"dp1: {submodules_depth1}")
+    print(f"dp2: {submodules_depth2}")
+
     return submodules_depth1, submodules_depth2
 
 def extraction_list(individual): # O(n), everything is bounded by O(n) here
     ind = str(individual).replace(" ", "") # O(n)
     tree, _ = parse_expr(ind, 0) # O(n)
+    #print(f"tree: {tree}")
     submodules_depth1, submodules_depth2 = extract_nodes(tree, is_root=True) # O(n)
     
-    d1_set = set(submodules_depth1) # O(n)
-    submodules_depth2 = [mod for mod in submodules_depth2 if mod not in d1_set] # O(n)
+    submodules_depth1_set = set(submodules_depth1) # O(n)
+    submodules_depth2 = [mod for mod in submodules_depth2 if mod not in submodules_depth1_set] # O(n)
 
-    #print(f"ind: {ind}")
-    #print(f"dp1: {submodules_depth1}")
-    #print(f"dp2: {submodules_depth2}")
+    print(f"ind: {ind}")
+    print(f"dp1: {submodules_depth1}")
+    print(f"dp2: {submodules_depth2}")
 
     return submodules_depth1, submodules_depth2
 
@@ -144,9 +152,14 @@ def extract_nodes(node, is_root=False): # O(b) with b the number of nodes
         op, args = node
         if not is_root and is_operator(op):
             if is_flat(node):
-                d1.append(node_to_str(node))
+                d1.append(node_to_str(node)) #d2.append(node_to_str(node))
             else:
-                d2.append(node_to_str(node))
+                if op == "neg":
+                    if is_flat(args[0]):
+                        d2.append(node_to_str(node))
+                else:
+                    if is_flat(args[0]) and is_flat(args[1]):
+                        d2.append(node_to_str(node))
         # scan all the nodes O(b)
         for arg in args:
             if isinstance(arg, tuple):
