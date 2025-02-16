@@ -9,7 +9,7 @@ from tkinter import ttk, filedialog, messagebox
 import multiprocessing
 from gp_types import *
 
-def threaded_task(task_func, task_func2, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
+def process_task(task_func, task_func2, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     multiprocessing.Process(
         target=task_func,
         args=(task_func2, file_path, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size),
@@ -28,7 +28,7 @@ def start_task(task_func, verbose, n_run, max_depth, generations, pop_size, iter
     if not file_path or not os.path.isfile(file_path):
         messagebox.showerror("Error", "Select a csv dataset file.")
         return
-    threaded_task(run_script, task_func, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
+    process_task(run_script, task_func, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size)
 
 def run_script(method_func, file_path, verbose, n_run, max_depth, generations, pop_size, iterations, inds_to_keep, kernel_size):
     avg_f1 = []
@@ -45,7 +45,7 @@ def run_script(method_func, file_path, verbose, n_run, max_depth, generations, p
     # run the script n times and save the results to a file
     with open(filename, "w") as results_file0:
         results_file0.write("runs;max_depth;generations;population_size;iterations;individuals_to_keep;kernel_size;method;dataset\n")
-        results_file0.write(f"{n_run}:{max_depth};{generations};{pop_size};{iterations};{inds_to_keep};{kernel_size};{method_func.__name__};{file_path}\n")
+        results_file0.write(f"{n_run};{max_depth};{generations};{pop_size};{iterations};{inds_to_keep};{kernel_size};{method_func.__name__};{file_path}\n")
     for i in range(n_run):
         print(f"({method_func.__name__}) Run {i} starting...")
         run_start = datetime.now().timestamp()

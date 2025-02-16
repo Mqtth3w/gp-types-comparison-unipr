@@ -6,6 +6,13 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import threading
+
+def threaded_task(task_func):
+    threading.Thread(
+        target=task_func,
+        daemon=True
+    ).start()
 
 def parse_results_file(filename):
     parameters = {}
@@ -19,6 +26,7 @@ def parse_results_file(filename):
             return parameters, runs, overall
         
         params_line = lines[1].split(';')
+        #print(params_line)
         parameters = {
             'n_run': params_line[0],
             'max_depth': params_line[1],
@@ -113,7 +121,7 @@ def load_results():
     # results window
     results_window = tk.Toplevel(root)
     results_window.title(f"Results Analysis {parameters['method']}")
-    results_window.geometry("1200x800")
+    results_window.geometry("1100x800")
     
     # create a canvas widget to make the whole UI scrollable
     canvas = tk.Canvas(results_window)
@@ -203,7 +211,7 @@ def ui():
     global root
     root = tk.Tk()
     root.title("Results Analysis")
-    root.geometry("900x150")
+    root.geometry("900x125")
     
     main_frame = ttk.Frame(root)
     main_frame.pack(fill="both", expand=True)
@@ -212,7 +220,7 @@ def ui():
                                   You can upload multiple files (one after the other) to compare them in parallel")
     upload_frame.pack(pady=20, padx=20, fill="x")
     
-    ttk.Button(upload_frame, text="Upload Results File", command=load_results).pack(pady=15, padx=50)
+    ttk.Button(upload_frame, text="Upload Results File", command=lambda: threaded_task(load_results)).pack(pady=15, padx=50)
     
     root.mainloop()
 
