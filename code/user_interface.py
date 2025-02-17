@@ -1,4 +1,4 @@
-# initially developed by Aeranna Cella, reviewed by Francesca Stefano and afterwards by Matteo Gianvenuti
+# initially developed by Aeranna Cella, reviewed by Matteo Gianvenuti
 '''
 @author Matteo Gianvenuti https://GitHub.com/Mqtth3w
 @license GPL-3.0

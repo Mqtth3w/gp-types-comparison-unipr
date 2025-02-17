@@ -170,6 +170,7 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
     best_ind = None
     
     for cnt in range(N_ITERATIONS):
+        print(f"(modularGP_CellaMethod) iter {cnt} strated...")
         pop = toolbox.population(n=N_POPULATION)
         
         if cnt == 0:
@@ -418,6 +419,7 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
 
     cxpb, mutpb = 0.5, 0.1
     for cnt in range(N_ITERATIONS):
+        print(f"(modularGP_StefanoMethod) iter {cnt} strated...")
         pop = toolbox.population(n=N_POPULATION)
 
         if cnt == 0:
@@ -550,6 +552,7 @@ def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_PO
     mstats.register("max", np.max)
     
     hof = tools.HallOfFame(1)
+    print(f"(classicalGP) evolution strated...")
     pop = toolbox.population(n=N_POPULATION)
     pop, log = eaSimple_elit(pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof, verbose=verbose)
     

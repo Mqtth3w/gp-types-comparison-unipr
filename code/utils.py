@@ -85,9 +85,9 @@ def extraction_tree(individual): # O(n)
             submodules_depth2.remove(module) # worst case O(b) 
     '''
 
-    print(f"ind: {individual}")
-    print(f"dp1: {submodules_depth1}")
-    print(f"dp2: {submodules_depth2}")
+    #print(f"ind: {individual}")
+    #print(f"dp1: {submodules_depth1}")
+    #print(f"dp2: {submodules_depth2}")
 
     return submodules_depth1, submodules_depth2
 
@@ -100,9 +100,9 @@ def extraction_list(individual): # O(n), everything is bounded by O(n) here
     submodules_depth1_set = set(submodules_depth1) # O(n)
     submodules_depth2 = [mod for mod in submodules_depth2 if mod not in submodules_depth1_set] # O(n)
 
-    print(f"ind: {ind}")
-    print(f"dp1: {submodules_depth1}")
-    print(f"dp2: {submodules_depth2}")
+    #print(f"ind: {ind}")
+    #print(f"dp1: {submodules_depth1}")
+    #print(f"dp2: {submodules_depth2}")
 
     return submodules_depth1, submodules_depth2
 
