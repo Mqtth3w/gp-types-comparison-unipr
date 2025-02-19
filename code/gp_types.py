@@ -185,7 +185,7 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
         pop, log = eaSimple_elit(pop, toolbox, 0.5, 0.1, N_GENERATIONS, stats=mstats, halloffame=hof[cnt], verbose=verbose)
         
         best_ind = hof[cnt][0]
-        print(f"(modularGP_CellaMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual: {best_ind}\n")
+        print(f"(modularGP_CellaMethod, iter:{cnt}) Best individual: {best_ind}\n")
         
         # evaluation on training, validation and test sets
         f1_testSet = evalSet(best_ind, test_data, test_labels, "test")
@@ -436,7 +436,7 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
         adjust_probabilities(pop)
 
         best_ind = hof[cnt][0]
-        print(f"(modularGP_StefanoMethod, iter:{cnt+1}/{N_ITERATIONS}) Best individual: {best_ind}\n")
+        print(f"(modularGP_StefanoMethod, iter:{cnt}) Best individual: {best_ind}\n")
         f1_testSet = evalSet(best_ind, test_data, test_labels, "test")
         f1_valSet = evalSet(best_ind, val_data, val_labels, "validation")
         validation_f1.append(f1_valSet)
@@ -592,6 +592,6 @@ tools.myFunc()
 # 2 3 1 # so it is not 2 3 2
 # to solve it you need to do tools.myFunc(c=c)
 # they did not it so they always run the program with the fixed MAX_DEPTH initial value
-# anyway in the enached GP method they applied the purpose is limit the depth and work on the solutions
+# anyway in the enached GP method the applied the purpose is to limit the depth and work on the solutions
 # in fact they also used staticLimit so the editing of MAX_DEPTH was a random operation
 '''
