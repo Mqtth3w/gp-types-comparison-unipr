@@ -6,11 +6,11 @@
 import functools
 import operator
 import dill
-import pickle
 from deap import gp, creator, base
 from utils import *
 from data_loader import load_dataset
 import os
+import math
 #import pathos.multiprocessing as multiprocessing
 #from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
@@ -232,7 +232,7 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
     # save
     script_dir = os.path.dirname(os.path.realpath(__file__))
     with open(f"{script_dir}/modularGP_CellaMethod_best_individual_run{const}_{current_time}.pickle", "wb") as f:
-        pickle.dump(best_ind, f)
+        dill.dump(best_ind, f)
     with open(f"{script_dir}/modularGP_CellaMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
     best_ind_len = count_nodes(best_ind)
@@ -295,14 +295,21 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
                 modules_freq[module][1] = 0
 
         sorted_modules_fitness = dict(sorted(modules_freq.items(), key=lambda x: x[1][1], reverse=True))
-        individuals_to_keep = [module for module in sorted_modules_fitness.keys()][:n]
+        
+        # selection of the n individuals to keep
+        individuals_to_keep = []
+        for module in sorted_modules_fitness.keys():
+            if len(individuals_to_keep) < n:
+                individuals_to_keep.append(module)
+            else:
+                break
         '''
         print("\n(modularGP_StefanoMethod) Individuals to keep:")
         for i, module in enumerate(individuals_to_keep):
             print(f"(modularGP_StefanoMethod) {i}: {module}")
         '''
         return individuals_to_keep
-
+    
     def div(x, y):
         return 1 if y == 0 else x / y
 
@@ -396,22 +403,17 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
             prev_avg_fitness = np.mean([ind.fitness.values[0] for ind in prev_population])
             fitness_improvement = avg_fitness - prev_avg_fitness
         else:
-            fitness_improvement = None
+            fitness_improvement = fitness_improvement_threshold + 1
         
         diversity = len(set(fitness_values)) / len(fitness_values)
         
-        adjust_condition = (
-            diversity < diversity_threshold or
-            (fitness_improvement is not None and fitness_improvement < fitness_improvement_threshold)
-        )
-        
         # adjust probabilities with clamping to valid ranges [0, 1]
-        if adjust_condition:
-            cxpb = max(cxpb - 0.1, 0.0) # decrease crossover
-            mutpb = min(mutpb + 0.1, 1.0) # increase mutation
+        if diversity < diversity_threshold or fitness_improvement < fitness_improvement_threshold:
+            cxpb = max(cxpb - 0.05, 0.0) # decrease crossover
+            mutpb = min(mutpb + 0.05, 1.0) # increase mutation
         else:
-            cxpb = min(cxpb + 0.1, 1.0) # revert crossover
-            mutpb = max(mutpb - 0.1, 0.0) # revert mutation
+            cxpb = min(cxpb + 0.05, 1.0) # revert crossover
+            mutpb = max(mutpb - 0.05, 0.0) # revert mutation
         
         prev_population[:] = population
         
@@ -481,7 +483,7 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
     # save
     script_dir = os.path.dirname(os.path.realpath(__file__))
     with open(f"{script_dir}/modularGP_StefanoMethod_best_individual_run{const}_{current_time}.pickle", "wb") as f:
-        pickle.dump(best_ind, f)
+        dill.dump(best_ind, f)
     with open(f"{script_dir}/modularGP_StefanoMethod_pset_run{const}_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
     best_ind_len = count_nodes(best_ind)
@@ -513,14 +515,14 @@ def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_PO
         print(f"(classicalGP) Reached {mean_f1} F1 on {type} set") 
         return mean_f1
     
-    def protectedDiv(x, y):
+    def div(x, y):
         return 1 if y == 0 else x / y
 
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
     pset.addPrimitive(operator.add, 2)
     pset.addPrimitive(operator.sub, 2)
     pset.addPrimitive(operator.mul, 2)
-    pset.addPrimitive(protectedDiv, 2)
+    pset.addPrimitive(div, 2)
     
     pset.addPrimitive(operator.neg, 1)
     pset.addEphemeralConstant(f"rand101_{const}", functools.partial(random.randint, -1, 1))
@@ -566,7 +568,7 @@ def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_PO
     # save
     script_dir = os.path.dirname(os.path.realpath(__file__))
     with open(f"{script_dir}/classicalGP_best_individual_{current_time}.pickle", "wb") as f:
-        pickle.dump(hof[0], f)
+        dill.dump(hof[0], f)
     with open(f"{script_dir}/classicalGP_pset_{current_time}.pkl", "wb") as p:
         dill.dump(pset, p)
 

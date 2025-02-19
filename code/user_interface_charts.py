@@ -171,7 +171,7 @@ def load_results():
         
         ax.set_xlabel("Iterations")
         ax.set_ylabel("F1 Score")
-        ax.set_title(f"F1 Score progression - run {run_idx+1}")
+        ax.set_title(f"F1 Score progression - Run {run_idx+1}")
         ax.legend()
         ax.grid(True)
         
@@ -181,9 +181,9 @@ def load_results():
         
         # add metrics
         metrics_data = [
-            ("Average Test F1:", f"{run_data['avg_test_f1']:.4f}"),
-            ("Run Time (min):", f"{run_data['run_time_min']:.2f}"),
-            ("Best Individual Nodes:", run_data['num_nodes_best_ind'])
+            ("Average test F1:", f"{run_data['avg_test_f1']:.4f}"),
+            ("Run time (min):", f"{run_data['run_time_min']:.2f}"),
+            ("Best individual nodes:", run_data['num_nodes_best_ind'])
         ]
         
         for i, (label, value) in enumerate(metrics_data):
@@ -193,12 +193,12 @@ def load_results():
                 .grid(row=i, column=1, sticky="w", padx=5, pady=5)
     
     # display overall results
-    overall_frame = ttk.LabelFrame(scrollable_frame, text="Overall Results")
+    overall_frame = ttk.LabelFrame(scrollable_frame, text="Overall results")
     overall_frame.grid(row=len(runs)+1, column=0, padx=10, pady=20, sticky="ew")
     
     overall_data = [
-        ("Overall Average F1:", f"{overall['F1_OVERALL_AVERAGE_OF_ALL_RUNS']:.4f}"),
-        ("Total Running Time (min):", f"{overall['OVERALL_RUNNING_TIME_MIN']:.2f}")
+        ("Overall average F1:", f"{overall['F1_OVERALL_AVERAGE_OF_ALL_RUNS']:.4f}"),
+        ("Total running time (min):", f"{overall['OVERALL_RUNNING_TIME_MIN']:.2f}")
     ]
     
     for i, (label, value) in enumerate(overall_data):
