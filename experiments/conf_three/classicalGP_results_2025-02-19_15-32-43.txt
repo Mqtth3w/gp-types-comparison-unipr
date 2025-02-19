@@ -1,0 +1,17 @@
+runs;max_depth;generations;population_size;iterations;individuals_to_keep;kernel_size;method;dataset
+1;4;10;40;1;0;5;classicalGP;../dataset/arrhythmias_data_balanced_6000elements.csv
+
+--------------------
+--------------------
+run;iteration;test_f1;validation_f1
+0;0;0.9574638147034804;0.9524991753329051
+
+--------------------
+run;avg_test_f1;num_nodes_best_ind;run_time_min
+0;0.9574638147034804;13;27.896501513322196
+
+--------------------
+--------------------
+--------------------
+F1_OVERALL_AVERAGE_OF_ALL_RUNS;OVERALL_RUNNING_TIME_MIN
+0.9574638147034804;27.896610780556998
