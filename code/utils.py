@@ -50,6 +50,9 @@ def training_rf(X_data, X_labels, Y_data, Y_labels):
 
     return mean_f1, Y_labels_multi, y_predictions, rf
 
+def div(x, y):
+    return 1 if y == 0 else x / y
+
 def extraction_tree(individual): # O(n)
     individual = str(individual).replace(" ","")
 

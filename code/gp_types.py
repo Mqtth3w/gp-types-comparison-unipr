@@ -10,7 +10,6 @@ from deap import gp, creator, base
 from utils import *
 from data_loader import load_dataset
 import os
-import math
 #import pathos.multiprocessing as multiprocessing
 #from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
@@ -93,9 +92,6 @@ def modularGP_CellaMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENERAT
             #print(f"(modularGP_CellaMethod) {i}: {individuals_to_keep[i]}")
 
         return individuals_to_keep
-
-    def div(x, y):
-        return 1 if y == 0 else x / y
     
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
     pset.addPrimitive(operator.add, 2)
@@ -244,7 +240,7 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
     train_data, train_labels, val_data, val_labels, test_data, test_labels = load_dataset(file_path)
     validation_f1, f1_score, statistics  = [], [], []
 
-    def evalTrainingSet(individual):
+    def evalTrainingSet(individual, pset, train_data, val_data):
         clf = gp.PrimitiveTree(individual)
         func = gp.compile(clf, pset)
         new_train_set = convolution(func, train_data, KERNEL_SIZE)
@@ -309,9 +305,6 @@ def modularGP_StefanoMethod(current_time, file_path, verbose, MAX_DEPTH, N_GENER
             print(f"(modularGP_StefanoMethod) {i}: {module}")
         '''
         return individuals_to_keep
-    
-    def div(x, y):
-        return 1 if y == 0 else x / y
 
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
     pset.addPrimitive(operator.add, 2)
@@ -514,9 +507,6 @@ def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_PO
         mean_f1, _, _, _ = training_rf(new_train_set, train_labels, new_data, labels)
         print(f"(classicalGP) Reached {mean_f1} F1 on {type} set") 
         return mean_f1
-    
-    def div(x, y):
-        return 1 if y == 0 else x / y
 
     pset = gp.PrimitiveSet("MAIN", KERNEL_SIZE)
     pset.addPrimitive(operator.add, 2)
