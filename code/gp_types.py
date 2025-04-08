@@ -567,7 +567,7 @@ def classicalGP(current_time, file_path, verbose, MAX_DEPTH, N_GENERATIONS, N_PO
 
 ''' # check the doc for more details
 # here a demostration that editing c (MAX_DEPTH) does not affect the successive calls 
-# it wiil be seen always as 1 (the value passed at the moment of registration)
+# it will be seen always as 1 (the value passed at the moment of registration)
 # in the "Reference Code" by Cella/Stefano c is MAX_DEPTH
 def func(a, b, c=3):
     print(a, b, c)
